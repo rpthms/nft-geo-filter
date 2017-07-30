@@ -1,8 +1,10 @@
 # nft-blacklist
 Blacklist country specific IP blocks using nftables
 
+NOTE : IPv6 addresses are not supported at the moment.
+
 # Requirements
-To use this script, you will need to create a 'set' in your nftables configuration. This set can belong to any table in your nftables configuration and is responsible for holding the blacklisted IP addresses. The syntax to create a set is :
+To use this script, you will need to create a 'set' in your nftables configuration with the `type ipv4_addr` and `flags interval` set properties. This set can belong to any table in your nftables configuration and is responsible for holding the blacklisted IP addresses. The syntax to create a set is :
 
 `nft add set [table] [set-name] {set properties}`
 
