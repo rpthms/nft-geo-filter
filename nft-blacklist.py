@@ -20,7 +20,7 @@ FILE_HEADER = ('table {} {} {{\n'
                'type ipv4_addr\n'
                'flags interval\n')
 
-IPDENY_URL= 'http://www.ipdeny.com/ipblocks/data/countries/{}.zone'
+IPDENY_URL= 'http://www.ipdeny.com/ipblocks/data/aggregated/{}-aggregated.zone'
 COUNTRY_CODES = ('cn','ru')  #Check ipdeny.com for the country codes
 
 def update_blacklist():
