@@ -2,9 +2,11 @@
 
 # Python script for updating the nftables blacklist
 
-import urllib.request
+import os
 import subprocess
+import sys
 import tempfile
+import urllib.request
 
 #Binaries
 NFT = '/usr/sbin/nft'
@@ -43,4 +45,6 @@ def update_blacklist():
     print('Done!')
 
 if __name__ == '__main__':
+    if not os.geteuid() == 0:
+        sys.exit('Need root privileges to run this script!')
     update_blacklist()
