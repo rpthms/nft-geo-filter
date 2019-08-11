@@ -76,10 +76,20 @@ def flush_blacklist(addr_family, nft_family, table, blacklist_prefix):
     # not exist, because of which the following subprocess.run call may
     # exit with a non zero code. I couldn't figure out a way to find if a
     # set exists without having to list the entire contents of a set.
+    #
+    # So, for now, I'm running the flush command anyways and checking the
+    # output of the command. If the stderr contains 'No such file', that probably
+    # means that the set doesn't exist, so print an appropriate message. If we
+    # get anything else in the stdout or stderr of the flush command, print it
+    # verbatim.
     print('Flushing {}..'.format(set_name))
     nft_command = nft_command_tmpl.format(NFT, nft_family, table, set_name).split()
-    subprocess.run(nft_command)
-
+    proc = subprocess.run(nft_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = proc.stdout.decode('utf-8')
+    if "No such file" in stdout:
+        print('{} does not exist, skipping!'.format(set_name))
+    elif stdout:
+        print(stdout)
 
 def update_blacklist(addr_family, nft_family, table, blacklist_prefix, country_codes):
     if addr_family == 'AF_INET':
