@@ -129,19 +129,22 @@ if __name__ == '__main__':
 
     # Optional arguments
     table_group = parser.add_argument_group(
-        title = "Table",
-        description = textwrap.dedent("""Choose the family and table name to create the blacklist set in. If
+        title="Table",
+        description=textwrap.dedent("""Choose the family and table name to create the blacklist set in. If
                     --inet-table is chosen, then the blacklist set will be created in the inet family which
                     can be used by both v4 and v6 addresses. You cannot specify --inet-table along with
                     --ip-table and --ip6-table. An --inet-table called 'filter' will be used by default""")
     )
-    table_group.add_argument("-4", "--ip-table", help="Name of the ip table which will contain the v4 blacklist set")
-    table_group.add_argument("-6", "--ip6-table", help="Name of the ip6 table which will contain the v6 blacklist set")
-    table_group.add_argument("-i", "--inet-table", help="Name of the inet table which will contain the v4 and v6 blacklist sets")
+    table_group.add_argument("-4", "--ip-table",
+        help="Name of the ip table which will contain the v4 blacklist set")
+    table_group.add_argument("-6", "--ip6-table",
+        help="Name of the ip6 table which will contain the v6 blacklist set")
+    table_group.add_argument("-i", "--inet-table",
+        help="Name of the inet table which will contain the v4 and v6 blacklist sets")
 
     blacklist_group = parser.add_argument_group(
-        title = "Blacklist",
-        description = textwrap.dedent("""Provide the prefix to be used for the blacklist sets. The blacklist sets
+        title="Blacklist",
+        description=textwrap.dedent("""Provide the prefix to be used for the blacklist sets. The blacklist sets
                     will be called <prefix>-v4 or <prefix>-v6 depending on which address family is used by the
                     set. 'blacklist' will be used as the default blacklist prefix.""")
     )
@@ -149,7 +152,9 @@ if __name__ == '__main__':
 
     # Mandatory arguments
     parser.add_argument("country", nargs='+',
-        help="2 letter ISO-3166-1 alpha-2 country codes to block. Check ipdeny.com/ipblocks/ to find the list of supported countries.")
+        help=textwrap.dedent("""2 letter ISO-3166-1 alpha-2 country codes to block. Check
+            ipdeny.com/ipblocks/ to find the list of supported countries.""")
+    )
 
     args = parser.parse_args()
     if args.inet_table and (args.ip6_table or args.ip_table):
@@ -163,10 +168,14 @@ if __name__ == '__main__':
 
     # Start updating the blacklists!
     if 'IP_FAMILY' in conf and 'IP_TABLE_NAME' in conf:
-        flush_blacklist("AF_INET", conf['IP_FAMILY'], conf['IP_TABLE_NAME'], conf['BLACKLIST_PREFIX'])
-        update_blacklist("AF_INET", conf['IP_FAMILY'], conf['IP_TABLE_NAME'], conf['BLACKLIST_PREFIX'], conf['COUNTRY_CODES'])
+        flush_blacklist("AF_INET", conf['IP_FAMILY'],
+            conf['IP_TABLE_NAME'], conf['BLACKLIST_PREFIX'])
+        update_blacklist("AF_INET", conf['IP_FAMILY'], conf['IP_TABLE_NAME'],
+            conf['BLACKLIST_PREFIX'], conf['COUNTRY_CODES'])
     if 'IP6_FAMILY' in conf and 'IP6_TABLE_NAME' in conf:
-        flush_blacklist("AF_INET6", conf['IP6_FAMILY'], conf['IP6_TABLE_NAME'], conf['BLACKLIST_PREFIX'])
-        update_blacklist("AF_INET6", conf['IP6_FAMILY'], conf['IP6_TABLE_NAME'], conf['BLACKLIST_PREFIX'], conf['COUNTRY_CODES'])
+        flush_blacklist("AF_INET6", conf['IP6_FAMILY'],
+            conf['IP6_TABLE_NAME'], conf['BLACKLIST_PREFIX'])
+        update_blacklist("AF_INET6", conf['IP6_FAMILY'], conf['IP6_TABLE_NAME'],
+            conf['BLACKLIST_PREFIX'], conf['COUNTRY_CODES'])
 
     print('Done!')
