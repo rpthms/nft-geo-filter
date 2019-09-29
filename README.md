@@ -15,8 +15,9 @@ IPv4 blacklist set and `--ip6-table` for the IPv6 blacklist set.
 You cannot use `--inet-table` along with `--ip-table` or `--ip6-table`.
 
 You can also modify the name of the blacklist sets that will be created in the
-tables using the `--blacklist-prefix` flag. The sets will be named <prefix>-v4
-and <prefix>-v6 which will hold the IPv4 and IPv6 address blocks respectively.
+tables using the `--blacklist-prefix` flag. The sets will be named
+`<prefix>-v4` and `<prefix>-v6` which will hold the IPv4 and IPv6 address
+blocks respectively.
 
 Running nft-blacklist.py without specifying any optional flags will end up
 creating blacklist sets called **blacklist-v4** and **blacklist-v6** in a table
