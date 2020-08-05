@@ -75,11 +75,21 @@ traffic, it will not cause your current nftables config to break. The
 "filter-chain" chain created by this script has a priority of -200 to ensure
 that the filtering rules of this script are applied before your own rules.
 
+# Other options
+By default, nft-geo-filter uses `/usr/sbin/nft` as the path to the nft binary.
+If your distro stores nft in a different location, specify that location using
+the `--nft-location` argument.
+
+You can also add counters to your filtering rules to see how many packets have
+been dropped/accepted. Just add the `--counter` argument when calling the
+script.
+
 # Help Text
 Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a] [-f {ip,ip6,inet,netdev}]
-                      [-n TABLE_NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6]
+usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a] [-c]
+                      [-f {ip,ip6,inet,netdev}] [-n TABLE_NAME] [-i INTERFACE]
+                      [--no-ipv4 | --no-ipv6]
                       country [country ...]
 
 Filter traffic in nftables using country IP blocks
@@ -99,6 +109,7 @@ optional arguments:
   -a, --allow           By default, all the IPs in the filter sets will be denied and every
                         other IP will be allowed to pass the filtering chain. Provide this
                         argument to reverse this behaviour.
+  -c, --counter         Add the counter statement to the filtering rules
 
 Table:
   Provide the name and the family of the table in which the set of filtered addresses will be
@@ -231,8 +242,8 @@ the following examples:
   }
   ```
 
-* Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco\
-  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter MC`\
+* Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco and count the blocked packets\
+  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter --counter MC`\
   Resulting ruleset:
   ```
   table ip monaco-filter {
@@ -253,7 +264,7 @@ the following examples:
 
         chain filter-chain {
                 type filter hook prerouting priority -200; policy accept;
-                ip saddr @filter-v4 drop
+                ip saddr @filter-v4 counter packets 0 bytes 0 drop
         }
   }
   ```

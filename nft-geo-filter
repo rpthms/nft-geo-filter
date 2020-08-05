@@ -31,6 +31,7 @@ class GeoFilter:
         self.table_name = args.table_name
         self.interface = args.interface
         self.country_codes = [c.lower() for c in args.country]
+        self.counter = args.counter
         self.verbosity = args.verbose
 
         self.logger = self.configure_logging()
@@ -156,8 +157,9 @@ class GeoFilter:
         filter_set_name = "filter-v4" if addr_family == "AF_INET" else "filter-v6"
         nft_protocol = "ip" if addr_family == "AF_INET" else "ip6"
 
-        nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {}"
-        nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, nft_protocol, filter_set_name, action)
+        nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {} {}"
+        nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, nft_protocol,
+            filter_set_name, self.counter, action)
 
         self.logger.info("Adding a new filtering rule for {} addresses to {}'s filter-chain".format(filter_set_name, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
@@ -280,6 +282,8 @@ if __name__ == '__main__':
                 IP will be allowed to pass the filtering chain. Provide this argument to reverse this
                 behaviour.""")
     )
+    nft_gfilter_group.add_argument("-c", "--counter", action="store_const", const="counter", default="",
+        help=textwrap.dedent("Add the counter statement to the filtering rules"))
 
     # Table info
     table_group = parser.add_argument_group(
