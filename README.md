@@ -130,8 +130,8 @@ filtering operation to work.  Take a look at the following examples to
 understand how the script works. I'm using the IP address blocks from Monaco in
 the following examples:
 
-* Use a netdev table to block packets from Monaco (on the enp1s0 interface)
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 MC`
+* Use a netdev table to block packets from Monaco (on the enp1s0 interface)\
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 MC`\
   Resulting rulset:
   ```
   table netdev geo-filter {
@@ -167,8 +167,8 @@ the following examples:
   }
   ```
 
-* Use a netdev table to only block IPv4 packets from Monaco (on the enp1s0 interface)
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --no-ipv6 MC`
+* Use a netdev table to only block IPv4 packets from Monaco (on the enp1s0 interface)\
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --no-ipv6 MC`\
   Resulting ruleset:
   ```
   table netdev geo-filter {
@@ -194,8 +194,8 @@ the following examples:
   }
   ```
 
-* Only allow packets from Monaco using a netdev table (on the enp1s0 interface)
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --allow MC`
+* Only allow packets from Monaco using a netdev table (on the enp1s0 interface)\
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --allow MC`\
   Resulting ruleset:
   ```
   table netdev geo-filter {
@@ -231,8 +231,8 @@ the following examples:
   }
   ```
 
-* Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco
-  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter MC`
+* Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco\
+  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter MC`\
   Resulting ruleset:
   ```
   table ip monaco-filter {
@@ -258,8 +258,8 @@ the following examples:
   }
   ```
 
-* Use an ip6 table named 'monaco-filter-v6' to block IPv6 packets from Monaco
-  Command to run: `nft-geo-filter --table-family ip6 --table-name monaco-filter-v6 MC`
+* Use an ip6 table named 'monaco-filter-v6' to block IPv6 packets from Monaco\
+  Command to run: `nft-geo-filter --table-family ip6 --table-name monaco-filter-v6 MC`\
   Resulting ruleset:
   ```
   table ip6 monaco-filter-v6 {
@@ -279,8 +279,8 @@ the following examples:
   }
   ```
 
-* Only allow packets from Monaco using an inet table
-  Command to run: `nft-geo-filter --allow MC`
+* Only allow packets from Monaco using an inet table\
+  Command to run: `nft-geo-filter --allow MC`\
   Resulting ruleset:
   ```
   table inet geo-filter {
@@ -316,8 +316,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco using an inet table (default operation)
-  Command to run: `nft-geo-filter MC`
+* Block all packets from Monaco using an inet table (default operation)\
+  Command to run: `nft-geo-filter MC`\
   Resulting ruleset:
   ```
   table inet geo-filter {
@@ -353,8 +353,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco using an inet table named 'monaco-filter'
-  Command to run: `nft-geo-filter --table-name monaco-filter MC`
+* Block all packets from Monaco using an inet table named 'monaco-filter'\
+  Command to run: `nft-geo-filter --table-name monaco-filter MC`\
   Resulting ruleset:
   ```
   table inet monaco-filter {
