@@ -72,17 +72,16 @@ that the filtering rules of this script are applied before your own rules.
 # Help Text
 Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a]
-                      [-f {ip,ip6,inet,netdev}] [-n TABLE_NAME]
-                      [-i INTERFACE] [--no-ipv4 | --no-ipv6]
+usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a] [-f {ip,ip6,inet,netdev}]
+                      [-n TABLE_NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6]
                       country [country ...]
 
 Filter traffic in nftables using country IP blocks
 
 positional arguments:
-  country               2 letter ISO-3166-1 alpha-2 country codes to block.
-                        Check https://www.ipdeny.com/ipblocks/ to find the
-                        list of supported countries.
+  country               2 letter ISO-3166-1 alpha-2 country codes to block. Check
+                        https://www.ipdeny.com/ipblocks/ to find the list of supported
+                        countries.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -91,17 +90,15 @@ optional arguments:
 
   -l NFT_LOCATION, --nft-location NFT_LOCATION
                         Location of the nft binary. Default is /usr/sbin/nft
-  -a, --allow           By default, all the IPs in the filter sets will be
-                        denied and every other IP will be allowed to pass the
-                        filtering chain. Provide this argument to reverse this
-                        behaviour.
+  -a, --allow           By default, all the IPs in the filter sets will be denied and every
+                        other IP will be allowed to pass the filtering chain. Provide this
+                        argument to reverse this behaviour.
 
 Table:
-  Provide the name and the family of the table in which the set of filtered
-  addresses will be created. This script will create a new nftables table,
-  so make sure the provided table name is unique and not being used by any
-  other table in the ruleset. An 'inet' table called 'geo-filter' will be
-  used by default
+  Provide the name and the family of the table in which the set of filtered addresses will be
+  created. This script will create a new nftables table, so make sure the provided table name
+  is unique and not being used by any other table in the ruleset. An 'inet' table called 'geo-
+  filter' will be used by default
 
   -f {ip,ip6,inet,netdev}, --table-family {ip,ip6,inet,netdev}
                         Specify the table's family. Default is inet
@@ -109,18 +106,15 @@ Table:
                         Specify the table's name. Default is geo-filter
 
 Netdev arguments:
-  If you're using a netdev table, you need to provide the name of the
-  interface which is connected to the internet because netdev tables work on
-  a per-interface basis. You can also choose to only store v4 or only store
-  v6 addresses inside the netdev table sets by providing the '-4' or '-6'
-  arguments. Both v4 and v6 addresses are stored by default
+  If you're using a netdev table, you need to provide the name of the interface which is
+  connected to the internet because netdev tables work on a per-interface basis. You can also
+  choose to only store v4 or only store v6 addresses inside the netdev table sets by providing
+  the '-4' or '-6' arguments. Both v4 and v6 addresses are stored by default
 
   -i INTERFACE, --interface INTERFACE
                         Specify the ingress interface for the netdev table
-  --no-ipv4             Don't create a set for v4 addresses in the netdev
-                        table
-  --no-ipv6             Don't create a set for v6 addresses in the netdev
-                        table
+  --no-ipv4             Don't create a set for v4 addresses in the netdev table
+  --no-ipv6             Don't create a set for v6 addresses in the netdev table
 ```
 
 # Usage examples
@@ -224,7 +218,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook ingress device "wlp2s0" priority -200; policy drop;
+                type filter hook ingress device "enp1s0" priority -200; policy drop;
                 ip saddr @filter-v4 accept
                 ip6 saddr @filter-v6 accept
         }
