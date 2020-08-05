@@ -1,127 +1,141 @@
-# nft-blacklist
-Blacklist country specific IP blocks using nftables
+# nft-geo-filter
+Filter traffic in nftables using country specific IP blocks
 
-# Usage
+# Description
 This script will download IPv4 or/and IPv6 blocks for the specified countries
-from ipdeny.com and add them to sets in the appropriate tables. You have to
-specify 2 letter ISO-3166-1 alpha-2 country codes of the countries you want to
-block as positional arguments to this script. Go to ipdeny.com/ipblocks to find
-the list of countries that can be blocked.
+from ipdeny.com and add them to sets in the specified table. You have to
+provide 2 letter ISO-3166-1 alpha-2 country codes of the countries you want to
+filter as positional arguments to this script. Go to
+https://www.ipdeny.com/ipblocks/ to find the list of supported countries.
 
-You can specify which tables to add the sets into using `--ip-table`,
-`--ip6-table` and `--inet-table`. Use `--ip-table` to specify the table for the
-IPv4 blacklist set and `--ip6-table` for the IPv6 blacklist set.
-`--inet-table` adds both the IPv4 and IPv6 blacklist set into the same table.
-You cannot use `--inet-table` along with `--ip-table` or `--ip6-table`.
+You can specify which table holds the sets and the filtering rules using the
+`--table-family` and `--table-name` flags. `--table-name` specifies the name of
+the table. nft-geo-filter requires its own private table, so make sure that the
+table name that you provide is not being used by any other table in your
+ruleset. `--table-family` specifies the family of the nftables table which will
+store the filter sets and the filtering rule. The family must be one of the
+following options:
 
-You can also modify the name of the blacklist sets that will be created in the
-tables using the `--blacklist-prefix` flag. The sets will be named
-`<prefix>-v4` and `<prefix>-v6` which will hold the IPv4 and IPv6 address
-blocks respectively.
+* ip
+* ip6
+* inet
+* netdev
 
-Running nft-blacklist.py without specifying any optional flags will end up
-creating blacklist sets called **blacklist-v4** and **blacklist-v6** in a table
-called **filter of type 'inet'**.
+By using a separate table, this script can create it's own chains and add its
+own filtering rules without needing the admin to make any changes to their
+nftables config, like you were required to do in the previous version of this
+script. **Do not add any rules to the chains inside nft-geo-filter's private
+table**, because they will be removed when you re-run the script to update the
+filter sets.
 
-Run `nft-blacklist.py -h` to get the following help text:
+**The default action of this script is to block traffic** from the IP blocks of
+the provided countries and allow everything else. To invert this behaviour and
+only allow traffic from the IP blocks of the specified countries, use the
+`--allow` flag.
+
+Running nft-geo-filter without specifying any optional flags will end up
+creating IP sets and filtering rules to block traffic from those IPs, inside a
+table called 'geo-filter' of the 'inet' family. But **it is recommended to use
+a 'netdev' table to drop packets** much more effeciently than the other
+families.  Refer to the 'netdev' section below.
+
+# IPv4 or IPv6?
+
+The filter sets that are added to the table is determined by the table's family
+that you specify using `--table-family`:
+
+Table Family | Filter Sets
+-------------|------------
+ip|Only the IPv4 set
+ip6|Only the IPv6 set
+inet|Both IPv4 and IPv6 sets
+netdev|Both IPv4 and IPv6 sets by default. Use the --no-ipv6 flag to only use the IPv4 set or the --no-ipv4 flag to only use the IPv6 set.
+
+# Netdev
+Using the netdev table to drop packets is more efficient than dropping them in
+the tables of other families (by a factor of 2x according to the nftables wiki:
+https://wiki.nftables.org/wiki-nftables/index.php/Nftables_families#netdev).
+This is because the netdev rules are applied very early in the packet path (as
+soon as the NIC passes the packets to the networking stack).
+
+To use a netdev table, you need to set the `--table-family` to `netdev` and
+provide the name of the interface that's connected to the internet by using the
+`--interface` flag. The interface is needed because netdev tables work on a
+per-interface basis.
+
+# What do I need to add to my nftables config?
+**Nothing!** Since this script creates a separate nftables table to filter your
+traffic, it will not cause your current nftables config to break. The
+"filter-chain" chain created by this script has a priority of -200 to ensure
+that the filtering rules of this script are applied before your own rules.
+
+# Help Text
+Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-blacklist.py [-h] [-v] [-4 IP_TABLE] [-6 IP6_TABLE] [-i INET_TABLE]
-                        [-b BLACKLIST_PREFIX]
-                        country [country ...]
+usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a]
+                      [-f {ip,ip6,inet,netdev}] [-n TABLE_NAME]
+                      [-i INTERFACE] [--no-ipv4 | --no-ipv6]
+                      country [country ...]
 
-Add country based blacklist sets for nftables
+Filter traffic in nftables using country IP blocks
 
 positional arguments:
   country               2 letter ISO-3166-1 alpha-2 country codes to block.
-                        Check ipdeny.com/ipblocks/ to find the list of
-                        supported countries.
+                        Check https://www.ipdeny.com/ipblocks/ to find the
+                        list of supported countries.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -v, --version         show program's version number and exit
+  -v, --verbose         show verbose output
+  --version             show program's version number and exit
+
+  -l NFT_LOCATION, --nft-location NFT_LOCATION
+                        Location of the nft binary. Default is /usr/sbin/nft
+  -a, --allow           By default, all the IPs in the filter sets will be
+                        denied and every other IP will be allowed to pass the
+                        filtering chain. Provide this argument to reverse this
+                        behaviour.
 
 Table:
-  Choose the family and table name to create the blacklist set in. If
-  --inet-table is chosen, then the blacklist set will be created in the inet
-  family which can be used by both v4 and v6 addresses. You cannot specify
-  --inet-table along with --ip-table and --ip6-table. An --inet-table called
-  'filter' will be used by default
+  Provide the name and the family of the table in which the set of filtered
+  addresses will be created. This script will create a new nftables table,
+  so make sure the provided table name is unique and not being used by any
+  other table in the ruleset. An 'inet' table called 'geo-filter' will be
+  used by default
 
-  -4 IP_TABLE, --ip-table IP_TABLE
-                        Name of the ip table which will contain the v4
-                        blacklist set
-  -6 IP6_TABLE, --ip6-table IP6_TABLE
-                        Name of the ip6 table which will contain the v6
-                        blacklist set
-  -i INET_TABLE, --inet-table INET_TABLE
-                        Name of the inet table which will contain the v4 and
-                        v6 blacklist sets
+  -f {ip,ip6,inet,netdev}, --table-family {ip,ip6,inet,netdev}
+                        Specify the table's family. Default is inet
+  -n TABLE_NAME, --table-name TABLE_NAME
+                        Specify the table's name. Default is geo-filter
 
-Blacklist:
-  Provide the prefix to be used for the blacklist sets. The blacklist sets
-  will be called <prefix>-v4 or <prefix>-v6 depending on which address
-  family is used by the set. 'blacklist' will be used as the default
-  blacklist prefix.
+Netdev arguments:
+  If you're using a netdev table, you need to provide the name of the
+  interface which is connected to the internet because netdev tables work on
+  a per-interface basis. You can also choose to only store v4 or only store
+  v6 addresses inside the netdev table sets by providing the '-4' or '-6'
+  arguments. Both v4 and v6 addresses are stored by default
 
-  -b BLACKLIST_PREFIX, --blacklist-prefix BLACKLIST_PREFIX
-                        Name of the blacklist prefix
-
+  -i INTERFACE, --interface INTERFACE
+                        Specify the ingress interface for the netdev table
+  --no-ipv4             Don't create a set for v4 addresses in the netdev
+                        table
+  --no-ipv6             Don't create a set for v6 addresses in the netdev
+                        table
 ```
 
-# Example
+# Usage examples
+All you have to do is run this script with the appropriate flags. There's no
+need to create a table or set manually in your nftables config for the
+filtering operation to work.  Take a look at the following examples to
+understand how the script works. I'm using the IP address blocks from Monaco in
+the following examples:
 
-To use this script, you will need to create a 'set' in your nftables
-configuration with the `type ipv4_addr`/`type ipv6_addr`, `flags interval` and
-`auto-merge` set properties.  This set can belong to any table in your nftables
-configuration and is responsible for holding the blacklisted IP addresses.
-While nft-blacklist.py can create the set on it's own it would make more sense
-for you to create the set in your nftables config file, because nftables would
-complain when you're loading your ruleset initially if you try to use a named
-set in one of your rules if that set doesn't exist. nft-blacklist.py will
-update the set with the address blocks once your nftables ruleset has been
-loaded and your rules would be able to use the addresses in the blacklist set.
-
-Here's an example of an nftables configuration file containing the blacklist set.
-
-```
-#!/usr/sbin/nft -f
-
-flush ruleset
-
-table ip filter {
-        set blacklist-v4 {
-                type ipv4_addr
-                flags interval
-                auto-merge
-        }
-
-        chain input {
-                type filter hook input priority 0;
-
-                iifname lo accept
-                ct state established,related accept
-                ip saddr @blacklist-v4 drop
-                ip protocol icmp accept
-                tcp dport {http, https, ssh} ct state new accept
-                drop
-        }
-}
-```
-As you can see, since the blacklist set has been defined, we can now use it in
-the "input" chain. You can load this nftables config file (or something
-similar) on boot. And then run the nft-blacklist.py command after the ruleset
-has been loaded.
-
-As an example, if I run nft-blacklist.py with the following arguments after
-loading the nftables ruleset, to block all IP addresses from Monaco:
-```
-# nft-blacklist.py --ip-table filter MC
-```
-I would end up the following nftables ruleset that looks like this:
-```
-# nft list ruleset
-table ip filter {
-        set blacklist-v4 {
+* Use a netdev table to block packets from Monaco (on the enp1s0 interface)
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 MC`
+  Resulting rulset:
+  ```
+  table netdev geo-filter {
+        set filter-v4 {
                 type ipv4_addr
                 flags interval
                 auto-merge
@@ -136,43 +150,298 @@ table ip filter {
                              213.137.128.0/19 }
         }
 
-        chain input {
-                type filter hook input priority 0; policy accept;
-                iifname lo accept
-                ct state { established, related } accept
-                ip saddr @blacklist-v4 drop
-                ip protocol icmp accept
-                tcp dport {http, https, ssh} ct state new accept
-                drop
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook ingress device "enp1s0" priority -200; policy accept;
+                ip saddr @filter-v4 drop
+                ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
+* Use a netdev table to only block IPv4 packets from Monaco (on the enp1s0 interface)
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --no-ipv6 MC`
+  Resulting ruleset:
+  ```
+  table netdev geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        chain filter-chain {
+                type filter hook ingress device "enp1s0" priority -200; policy accept;
+                ip saddr @filter-v4 drop
+        }
+  }
+  ```
+
+* Only allow packets from Monaco using a netdev table (on the enp1s0 interface)
+  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --allow MC`
+  Resulting ruleset:
+  ```
+  table netdev geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook ingress device "wlp2s0" priority -200; policy drop;
+                ip saddr @filter-v4 accept
+                ip6 saddr @filter-v6 accept
+        }
+  }
+  ```
+
+* Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco
+  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter MC`
+  Resulting ruleset:
+  ```
+  table ip monaco-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip saddr @filter-v4 drop
+        }
+  }
+  ```
+
+* Use an ip6 table named 'monaco-filter-v6' to block IPv6 packets from Monaco
+  Command to run: `nft-geo-filter --table-family ip6 --table-name monaco-filter-v6 MC`
+  Resulting ruleset:
+  ```
+  table ip6 monaco-filter-v6 {
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
+* Only allow packets from Monaco using an inet table
+  Command to run: `nft-geo-filter --allow MC`
+  Resulting ruleset:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy drop;
+                ip saddr @filter-v4 accept
+                ip6 saddr @filter-v6 accept
+        }
+  }
+  ```
+
+* Block all packets from Monaco using an inet table (default operation)
+  Command to run: `nft-geo-filter MC`
+  Resulting ruleset:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip saddr @filter-v4 drop
+                ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
+* Block all packets from Monaco using an inet table named 'monaco-filter'
+  Command to run: `nft-geo-filter --table-name monaco-filter MC`
+  Resulting ruleset:
+  ```
+  table inet monaco-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip saddr @filter-v4 drop
+                ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
+# Adding exceptions to the filter sets
+If there are certain IP addresses which you want to prevent from being filtered
+by the IP sets generated by the scripts, then you'll need to create a chain
+with a priority higher than the script generated chain and accept the packets
+from those IP addresses. The priority used by the script generated chain is
+'-200'.
+
+For example, if you're blocking all IPv4 packets from Monaco using an 'ip'
+table and you want to add an exception for the addresses: `37.44.224.1` and
+`37.44.224.2`. Then your ruleset should look something like this:
+
+```
+table ip geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;       <--- Lower priority
+                ip saddr @filter-v4 drop
+        }
+}
+table ip my-local-table {
+        chain my-local-chain {
+                type filter hook prerouting priority -250; policy accept;       <--- Higher priority
+                ip saddr { 27.44.224.2, 37.44.224.1 } accept
         }
 }
 ```
 
-# Keep your blacklist sets updated
+# Run nft-geo-filter as a service
+nft-geo-filter can also be run via a cronjob or a systemd timer to keep your
+filtering sets updated. When nft-geo-filter is executed, it will check if the
+target sets already exist. It they do, the script will flush the existing
+contents of the filtering sets after downloading the IP blocks from ipdeny.com
+and then add the updated IP blocks to the sets. If any changes need to be made
+to the filtering rules, the script will make them as well.
 
-nft-blacklist.py can be run via a cronjob or a systemd timer to keep your
-blacklists updated. When nft-blacklist.py is executed, it will first flush the
-existing contents of the blacklist sets and then download the IP blocks from
-ipdeny.com and add the updated IP blocks to the blacklist sets. This way you
-don't need to reload your entire nftables ruleset. Your rules will stay the
-same, only the contents of the blacklist sets will change.
-
-Taking Monaco as an example again, to update the IPv4 blacklist set in an 'ip'
-table called filter-4 and the IPv6 blacklist set in an 'ip6' table called
-filter-6 at 3:00 a.m. every day, your cronjob would look like this:
+Taking Monaco as an example again, to update the filtering sets in an 'ip'
+table called 'monaco-filter' at 3:00 a.m. every day, your cronjob would look
+like this:
 ```
-0 3 * * * nft-blacklist.py --ip-table filter-4 --ip6-table filter-6 MC
+0 3 * * * nft-geo-filter --table-family ip --table-name monaco-filter MC
 ```
-
-# Whitelist?
-
-Though the script is called nft-blacklist.py it isn't actually doing the acutal
-blacklisting for you. The script only sets up nftables sets with IP address
-blocks of various countries in the specified tables. It's up to you to figure
-out what to do with the sets. Which is why it's pretty easy to whitelist the
-IPs of specific countries by using a rule like:
-```
-nft add rule ip filter input ip saddr @whitelist-v4 allow
-```
-which allows connections from IP addresses in the whitelist-v4 set in the "ip"
-filter table.
