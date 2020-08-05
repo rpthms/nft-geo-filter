@@ -20,8 +20,8 @@ FILE_HEADER = ('table {} {} {{\n'
                'flags interval\n'
                'auto-merge\n')
 
-IPDENY_V4_URL= 'http://ipdeny.com/ipblocks/data/aggregated/{}-aggregated.zone'
-IPDENY_V6_URL= 'http://ipdeny.com/ipv6/ipaddresses/aggregated/{}-aggregated.zone'
+IPDENY_V4_URL= 'https://www.ipdeny.com/ipblocks/data/aggregated/{}-aggregated.zone'
+IPDENY_V6_URL= 'https://www.ipdeny.com/ipv6/ipaddresses/aggregated/{}-aggregated.zone'
 
 class GeoFilter:
     def __init__(self, args):

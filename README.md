@@ -3,8 +3,8 @@ Allow/deny traffic in nftables using country specific IP blocks
 
 # TL;DR
 Run `nft-geo-filter --table-family netdev --interface <interface_to_internet>
-XX` to block the packets from the country whose ISO-3166-1 alpha-2 country code
-is XX. Replace `<interface_to_internet>` with the interface name in your system
+XX` to block packets from the country whose ISO-3166-1 alpha-2 country code is
+XX. Replace `<interface_to_internet>` with the interface name in your system
 that's connected to the internet (Eg:- eth0).
 
 # Description
