@@ -1,5 +1,5 @@
 # nft-geo-filter
-Filter traffic in nftables using country specific IP blocks
+Allow/deny traffic in nftables using country specific IP blocks
 
 # Description
 This script will download IPv4 or/and IPv6 blocks for the specified countries
