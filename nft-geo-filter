@@ -276,8 +276,10 @@ if __name__ == '__main__':
     nft_gfilter_group.add_argument("-l", "--nft-location", default="/usr/sbin/nft",
         help="Location of the nft binary. Default is /usr/sbin/nft")
     nft_gfilter_group.add_argument("-a", "--allow", action="store_true",
-        help="By default, all the IPs in the filter sets will be denied and every other IP will be allowed to pass the filtering chain. \
-Provide this argument to reverse this behaviour.")
+        help=textwrap.dedent("""By default, all the IPs in the filter sets will be denied and every other
+                IP will be allowed to pass the filtering chain. Provide this argument to reverse this
+                behaviour.""")
+    )
 
     # Table info
     table_group = parser.add_argument_group(
