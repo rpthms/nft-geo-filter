@@ -36,8 +36,9 @@ filter sets.
 
 **The default action of this script is to block traffic** from the IP blocks of
 the provided countries and allow everything else. To invert this behaviour and
-only allow traffic from the IP blocks of the specified countries, use the
-`--allow` flag.
+only allow traffic from the IP blocks of the specified countries (with a few
+exceptions, see the "Allow mode exceptions" section below), use the `--allow`
+flag.
 
 Running nft-geo-filter without specifying any optional flags will end up
 creating IP sets and filtering rules to block traffic from those IPs, inside a
@@ -68,6 +69,16 @@ To use a netdev table, you need to set the `--table-family` to `netdev` and
 provide the name of the interface that's connected to the internet by using the
 `--interface` flag. The interface is needed because netdev tables work on a
 per-interface basis.
+
+# Allow mode exceptions
+When you use `--allow`, certain rules are added along with the regular
+filtering rules to ensure that your regular traffic is not impeded. These rules
+ensure that:
+
+1. Traffic from private IPv4 address ranges and link-local IPv6 address ranges
+are allowed to pass through.
+2. Traffic from the localhost is allowed to pass through.
+3. Non-IP traffic such as ARP is not blocked when using the netdev table.
 
 # What do I need to add to my nftables config?
 **Nothing!** Since this script creates a separate nftables table to filter your
