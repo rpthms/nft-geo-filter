@@ -324,8 +324,8 @@ the following examples:
 
         chain filter-chain {
                 type filter hook prerouting priority -200; policy drop;
-                ip6 saddr fe80::/10 accept
-                ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
+                ip6 saddr { ::1, fe80::/10 } accept
+                ip saddr { 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
                 ip saddr @filter-v4 accept
                 ip6 saddr @filter-v6 accept
         }

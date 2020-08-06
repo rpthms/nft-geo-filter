@@ -186,8 +186,12 @@ class GeoFilter:
                 return -1
 
         if self.table_family in ("ip","inet") or (self.table_family == "netdev" and not self.no_ipv4):
-            nft_allow_private_ip = "{} insert rule {} {} filter-chain ip saddr {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }} accept".format(
-                self.nft, self.table_family, self.table_name)
+            if self.table_family == "netdev":
+                nft_allow_private_ip = "{} insert rule {} {} filter-chain ip saddr {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }}\
+                    accept".format(self.nft, self.table_family, self.table_name)
+            else:
+                nft_allow_private_ip = "{} insert rule {} {} filter-chain ip saddr {{ 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12,\
+                    192.168.0.0/16 }} accept".format(self.nft, self.table_family, self.table_name)
             self.logger.info("Allow private IPv4 address ranges in {}'s filter-chain".format(self.table_name))
             self.logger.debug("Running command: {}".format(nft_allow_private_ip))
             try:
@@ -197,8 +201,12 @@ class GeoFilter:
                 return -1
 
         if self.table_family in ("ip6","inet") or (self.table_family == "netdev" and not self.no_ipv6):
-            nft_allow_link_local_ip6 = "{} insert rule {} {} filter-chain ip6 saddr fe80::/10 accept".format(
-                self.nft, self.table_family, self.table_name)
+            if self.table_family == "netdev":
+                nft_allow_link_local_ip6 = "{} insert rule {} {} filter-chain ip6 saddr fe80::/10 accept".format(
+                    self.nft, self.table_family, self.table_name)
+            else:
+                nft_allow_link_local_ip6 = "{} insert rule {} {} filter-chain ip6 saddr {{ ::1, fe80::/10 }} accept".format(
+                    self.nft, self.table_family, self.table_name)
             self.logger.info("Allow link local IPv6 traffic in {}'s filter-chain".format(self.table_name))
             self.logger.debug("Running command: {}".format(nft_allow_link_local_ip6))
             try:
