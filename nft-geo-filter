@@ -31,6 +31,8 @@ class GeoFilter:
         self.table_name = args.table_name
         self.interface = args.interface
         self.country_codes = [c.lower() for c in args.country]
+        self.no_ipv4 = args.no_ipv4
+        self.no_ipv6 = args.no_ipv6
         self.counter = args.counter
         self.verbosity = args.verbose
 
@@ -168,6 +170,42 @@ class GeoFilter:
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
+
+    def add_allow_rules(self):
+        """Certain rules need to be added to the filter-chain when using allow, otherwise
+           LAN traffic and protocols such as ARP won't work"""
+        if self.table_family == "netdev":
+            nft_allow_non_ip = "{} insert rule {} {} filter-chain meta protocol ne {{ ip, ip6 }} accept".format(
+                self.nft, self.table_family, self.table_name)
+            self.logger.info("Allow non-IP traffic in {}'s filter-chain".format(self.table_name))
+            self.logger.debug("Running command: {}".format(nft_allow_non_ip))
+            try:
+                subprocess.run(nft_allow_non_ip.split(), capture_output=True, check=True)
+            except subprocess.CalledProcessError as err:
+                self.show_subprocess_run_error(err)
+                return -1
+
+        if self.table_family in ("ip","inet") or (self.table_family == "netdev" and not self.no_ipv4):
+            nft_allow_private_ip = "{} insert rule {} {} filter-chain ip saddr {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }} accept".format(
+                self.nft, self.table_family, self.table_name)
+            self.logger.info("Allow private IPv4 address ranges in {}'s filter-chain".format(self.table_name))
+            self.logger.debug("Running command: {}".format(nft_allow_private_ip))
+            try:
+                subprocess.run(nft_allow_private_ip.split(), capture_output=True, check=True)
+            except subprocess.CalledProcessError as err:
+                self.show_subprocess_run_error(err)
+                return -1
+
+        if self.table_family in ("ip6","inet") or (self.table_family == "netdev" and not self.no_ipv6):
+            nft_allow_link_local_ip6 = "{} insert rule {} {} filter-chain ip6 saddr fe80::/10 accept".format(
+                self.nft, self.table_family, self.table_name)
+            self.logger.info("Allow link local IPv6 traffic in {}'s filter-chain".format(self.table_name))
+            self.logger.debug("Running command: {}".format(nft_allow_link_local_ip6))
+            try:
+                subprocess.run(nft_allow_link_local_ip6.split(), capture_output=True, check=True)
+            except subprocess.CalledProcessError as err:
+                self.show_subprocess_run_error(err)
+                return -1
 
     def does_set_exist(self, filter_set_name):
         nft_list_command = "{} -j list sets {}".format(self.nft, self.table_family)
@@ -344,6 +382,10 @@ if __name__ == '__main__':
         gFilter.update_filter_set('AF_INET')
     if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
         gFilter.update_filter_set('AF_INET6')
+
+    # If we're using --allow, need to add some extra rules
+    if args.allow and gFilter.add_allow_rules() == -1:
+        sys.exit("Failed to add the rules needed for --allow to work")
 
     # Delete the old rules
     if gFilter.delete_old_rules() == -1:
