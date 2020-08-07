@@ -170,7 +170,7 @@ class GeoFilter:
             return -1
 
     def add_allow_rules(self):
-        """Certain rules need to be added to the filter-chain when using allow, otherwise
+        """Certain rules need to be added to the filter-chain when using --allow, otherwise
            LAN traffic and protocols such as ARP won't work"""
         if self.table_family == "netdev":
             nft_allow_non_ip = "{} insert rule {} {} filter-chain meta protocol ne {{ ip, ip6 }} accept".format(
