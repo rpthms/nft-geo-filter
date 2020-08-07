@@ -318,7 +318,7 @@ if __name__ == '__main__':
     parser.add_argument("--version", action="version", version="%(prog)s 3.0")
 
     nft_gfilter_group = parser.add_argument_group()
-    nft_gfilter_group.add_argument("-l", "--nft-location", default="/usr/sbin/nft",
+    nft_gfilter_group.add_argument("-l", "--nft-location", default="/usr/sbin/nft", metavar="LOCATION",
         help="Location of the nft binary. Default is /usr/sbin/nft")
     nft_gfilter_group.add_argument("-a", "--allow", action="store_true",
         help=textwrap.dedent("""By default, all the IPs in the filter sets will be denied and every other
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     )
     table_group.add_argument("-f", "--table-family", choices=["ip","ip6","inet","netdev"], default="inet",
         help="Specify the table's family. Default is inet")
-    table_group.add_argument("-n", "--table-name", default="geo-filter",
+    table_group.add_argument("-n", "--table-name", default="geo-filter", metavar="NAME",
         help="Specify the table's name. Default is geo-filter")
 
     # Netdev info
