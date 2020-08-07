@@ -103,28 +103,27 @@ change the log severity level from 'warn' by using the `--log-level` argument.
 # Help Text
 Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-geo-filter [-h] [-v] [--version] [-l NFT_LOCATION] [-a] [-c]
-                      [-f {ip,ip6,inet,netdev}] [-n TABLE_NAME] [-i INTERFACE]
-                      [--no-ipv4 | --no-ipv6]
+usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [-c] [-f {ip,ip6,inet,netdev}]
+                      [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-o] [--log-prefix PREFIX]
+                      [--log-level {emerg,alert,crit,err,warn,notice,info,debug}]
                       country [country ...]
 
 Filter traffic in nftables using country IP blocks
 
 positional arguments:
   country               2 letter ISO-3166-1 alpha-2 country codes to block. Check
-                        https://www.ipdeny.com/ipblocks/ to find the list of supported
-                        countries.
+                        https://www.ipdeny.com/ipblocks/ to find the list of supported countries.
 
 optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         show verbose output
   --version             show program's version number and exit
 
-  -l NFT_LOCATION, --nft-location NFT_LOCATION
+  -l LOCATION, --nft-location LOCATION
                         Location of the nft binary. Default is /usr/sbin/nft
-  -a, --allow           By default, all the IPs in the filter sets will be denied and every
-                        other IP will be allowed to pass the filtering chain. Provide this
-                        argument to reverse this behaviour.
+  -a, --allow           By default, all the IPs in the filter sets will be denied and every other
+                        IP will be allowed to pass the filtering chain. Provide this argument to
+                        reverse this behaviour.
   -c, --counter         Add the counter statement to the filtering rules
 
 Table:
@@ -135,7 +134,7 @@ Table:
 
   -f {ip,ip6,inet,netdev}, --table-family {ip,ip6,inet,netdev}
                         Specify the table's family. Default is inet
-  -n TABLE_NAME, --table-name TABLE_NAME
+  -n NAME, --table-name NAME
                         Specify the table's name. Default is geo-filter
 
 Netdev arguments:
@@ -148,6 +147,19 @@ Netdev arguments:
                         Specify the ingress interface for the netdev table
   --no-ipv4             Don't create a set for v4 addresses in the netdev table
   --no-ipv6             Don't create a set for v6 addresses in the netdev table
+
+Logging statement:
+  You can optionally add the logging statement to the filtering rules added by this script.
+  That way, you'll be able to see the IP addresses of the packets that are allowed or denied by
+  the filtering rules in the kernel log (which can be read via the systemd journal or syslog).
+  You can also add an optional prefix to the log messages and change the log message severity
+  level.
+
+  -o, --log             Add the log statement to the filtering rules
+  --log-prefix PREFIX   Add a prefix to the log messages for easier identification. No prefix is
+                        used by default.
+  --log-level {emerg,alert,crit,err,warn,notice,info,debug}
+                        Set the log message severity level. Default is 'warn'.
 ```
 
 # Usage examples
