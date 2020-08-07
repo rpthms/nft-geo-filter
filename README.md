@@ -95,6 +95,11 @@ You can also add counters to your filtering rules to see how many packets have
 been dropped/accepted. Just add the `--counter` argument when calling the
 script.
 
+Filtering rules can also log the packets that are allowed or denied by them, by
+using the `--log` argument. You can optionally provide a prefix to the log
+messages for easier identification, using the `--log-prefix` argument and
+change the log severity level from 'warn' by using the `--log-level` argument.
+
 # Help Text
 Run `nft-geo-filter -h` to get the following help text:
 ```
@@ -380,8 +385,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco using an inet table named 'monaco-filter'\
-  Command to run: `nft-geo-filter --table-name monaco-filter MC`\
+* Block all packets from Monaco using an inet table named 'monaco-filter' and log the packets\
+  Command to run: `nft-geo-filter --table-name monaco-filter --log MC`\
   Resulting ruleset:
   ```
   table inet monaco-filter {
@@ -411,8 +416,45 @@ the following examples:
 
         chain filter-chain {
                 type filter hook prerouting priority -200; policy accept;
-                ip saddr @filter-v4 drop
-                ip6 saddr @filter-v6 drop
+                ip saddr @filter-v4 log drop
+                ip6 saddr @filter-v6 log drop
+        }
+  }
+  ```
+
+* Block all packets from Monaco and log them using the 'MC-Block' log prefix and the 'info' log level\
+  Command to run: `nft-geo-filter --log --log-prefix 'MC-Block' --log-level info MC`\
+  Resulting ruleset:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip saddr @filter-v4 log prefix "MC-Block" level info drop
+                ip6 saddr @filter-v6 log prefix "MC-Block" level info drop
         }
   }
   ```

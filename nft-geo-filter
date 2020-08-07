@@ -34,6 +34,9 @@ class GeoFilter:
         self.no_ipv4 = args.no_ipv4
         self.no_ipv6 = args.no_ipv6
         self.counter = args.counter
+        self.log = args.log
+        self.log_prefix = args.log_prefix
+        self.log_level = args.log_level
         self.verbosity = args.verbose
 
         self.logger = self.configure_logging()
@@ -152,19 +155,28 @@ class GeoFilter:
                     self.show_subprocess_run_error(err)
                     return -1
 
+    def create_log_statement(self):
+        if self.log:
+            return "log {} {}".format(
+                "prefix \"{}\"".format(self.log_prefix) if self.log_prefix else "",
+                "level {}".format(self.log_level) if self.log_level else ""
+            )
+        else:
+            return ""
+
     def add_filtering_rule(self, addr_family):
         action = "accept" if self.allow else "drop"
         filter_set_name = "filter-v4" if addr_family == "AF_INET" else "filter-v6"
         nft_protocol = "ip" if addr_family == "AF_INET" else "ip6"
 
-        nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {} {}"
+        nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {} {} {}"
         nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, nft_protocol,
-            filter_set_name, self.counter, action)
+            filter_set_name, self.counter, self.create_log_statement(), action).split()
 
         self.logger.info("Adding a new filtering rule for {} addresses to {}'s filter-chain".format(filter_set_name, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
         try:
-            subprocess.run(nft_command.split(), capture_output=True, check=True)
+            subprocess.run(nft_command, capture_output=True, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -356,6 +368,21 @@ if __name__ == '__main__':
     netdev_addr_family_group.add_argument("--no-ipv4", action="store_true", help="Don't create a set for v4 addresses in the netdev table")
     netdev_addr_family_group.add_argument("--no-ipv6", action="store_true", help="Don't create a set for v6 addresses in the netdev table")
 
+    # Logging statement options
+    log_group = parser.add_argument_group(
+        title="Logging statement",
+        description=textwrap.dedent("""You can optionally add the logging statement to the filtering rules added
+                by this script. That way, you'll be able to see the IP addresses of the packets that are allowed
+                or denied by the filtering rules in the kernel log (which can be read via the systemd journal or
+                syslog). You can also add an optional prefix to the log messages and change the log message
+                severity level.""")
+    )
+    log_group.add_argument("-o", "--log", action="store_true", help="Add the log statement to the filtering rules")
+    log_group.add_argument("--log-prefix", metavar="PREFIX", help=textwrap.dedent("""Add a prefix to the log messages
+        for easier identification. No prefix is used by default."""))
+    log_group.add_argument("--log-level", choices=["emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"],
+        help="Set the log message severity level. Default is 'warn'.")
+
     # Mandatory arguments
     parser.add_argument("country", nargs='+',
         help=textwrap.dedent("""2 letter ISO-3166-1 alpha-2 country codes to block. Check
@@ -367,8 +394,11 @@ if __name__ == '__main__':
     if not os.geteuid() == 0:
         sys.exit('Need root privileges to run this script!')
 
-    if args.table_family == "netdev" and args.interface is None:
+    # Check the arguments
+    if args.table_family == "netdev" and not args.interface:
         sys.exit("'netdev' family requires an 'interface'. Please provide an interface with --interface")
+    if (args.log_prefix or args.log_level) and not args.log:
+        sys.exit("Can't use '--log-prefix', '--log-level' or '--log-flags' without the '--log' argument.")
 
     gFilter = GeoFilter(args)
 
