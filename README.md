@@ -170,8 +170,8 @@ understand how the script works. I'm using the IP address blocks from Monaco in
 the following examples:
 
 * Use a netdev table to block packets from Monaco (on the enp1s0 interface)\
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 MC`\
-  Resulting rulset:
+  **Command to run**: `nft-geo-filter --table-family netdev --interface enp1s0 MC`\
+  **Resulting ruleset**:
   ```
   table netdev geo-filter {
         set filter-v4 {
@@ -207,8 +207,8 @@ the following examples:
   ```
 
 * Use a netdev table to only block IPv4 packets from Monaco (on the enp1s0 interface)\
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --no-ipv6 MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --table-family netdev --interface enp1s0 --no-ipv6 MC`\
+  **Resulting ruleset**:
   ```
   table netdev geo-filter {
         set filter-v4 {
@@ -234,8 +234,8 @@ the following examples:
   ```
 
 * Only allow packets from Monaco using a netdev table (on the enp1s0 interface)\
-  Command to run: `nft-geo-filter --table-family netdev --interface enp1s0 --allow MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --table-family netdev --interface enp1s0 --allow MC`\
+  **Resulting ruleset**:
   ```
   table netdev geo-filter {
         set filter-v4 {
@@ -274,8 +274,8 @@ the following examples:
   ```
 
 * Use an ip table named 'monaco-filter' to block IPv4 packets from Monaco and count the blocked packets\
-  Command to run: `nft-geo-filter --table-family ip --table-name monaco-filter --counter MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --table-family ip --table-name monaco-filter --counter MC`\
+  **Resulting ruleset**:
   ```
   table ip monaco-filter {
         set filter-v4 {
@@ -301,8 +301,8 @@ the following examples:
   ```
 
 * Use an ip6 table named 'monaco-filter-v6' to block IPv6 packets from Monaco\
-  Command to run: `nft-geo-filter --table-family ip6 --table-name monaco-filter-v6 MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --table-family ip6 --table-name monaco-filter-v6 MC`\
+  **Resulting ruleset**:
   ```
   table ip6 monaco-filter-v6 {
         set filter-v6 {
@@ -322,8 +322,8 @@ the following examples:
   ```
 
 * Only allow packets from Monaco using an inet table\
-  Command to run: `nft-geo-filter --allow MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --allow MC`\
+  **Resulting ruleset**:
   ```
   table inet geo-filter {
         set filter-v4 {
@@ -361,8 +361,8 @@ the following examples:
   ```
 
 * Block all packets from Monaco using an inet table (default operation)\
-  Command to run: `nft-geo-filter MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter MC`\
+  **Resulting ruleset**:
   ```
   table inet geo-filter {
         set filter-v4 {
@@ -398,8 +398,8 @@ the following examples:
   ```
 
 * Block all packets from Monaco using an inet table named 'monaco-filter' and log the packets\
-  Command to run: `nft-geo-filter --table-name monaco-filter --log MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --table-name monaco-filter --log MC`\
+  **Resulting ruleset**:
   ```
   table inet monaco-filter {
         set filter-v4 {
@@ -435,8 +435,8 @@ the following examples:
   ```
 
 * Block all packets from Monaco and log them using the 'MC-Block ' log prefix and the 'info' log level\
-  Command to run: `nft-geo-filter --log --log-prefix 'MC-Block ' --log-level info MC`\
-  Resulting ruleset:
+  **Command to run**: `nft-geo-filter --log --log-prefix 'MC-Block ' --log-level info MC`\
+  **Resulting ruleset**:
   ```
   table inet geo-filter {
         set filter-v4 {
