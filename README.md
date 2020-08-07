@@ -434,8 +434,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco and log them using the 'MC-Block' log prefix and the 'info' log level\
-  Command to run: `nft-geo-filter --log --log-prefix 'MC-Block' --log-level info MC`\
+* Block all packets from Monaco and log them using the 'MC-Block ' log prefix and the 'info' log level\
+  Command to run: `nft-geo-filter --log --log-prefix 'MC-Block ' --log-level info MC`\
   Resulting ruleset:
   ```
   table inet geo-filter {
@@ -465,8 +465,8 @@ the following examples:
 
         chain filter-chain {
                 type filter hook prerouting priority -200; policy accept;
-                ip saddr @filter-v4 log prefix "MC-Block" level info drop
-                ip6 saddr @filter-v6 log prefix "MC-Block" level info drop
+                ip saddr @filter-v4 log prefix "MC-Block " level info drop
+                ip6 saddr @filter-v6 log prefix "MC-Block " level info drop
         }
   }
   ```
