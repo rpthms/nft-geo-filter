@@ -480,9 +480,10 @@ and then add the updated IP blocks to the sets. If any changes need to be made
 to the filtering rules, the script will make them as well.
 
 * Taking Monaco as an example again, to update the filtering sets in an 'ip'
-  table called 'monaco-filter' every 12 to 13 hours since you booted your system,
-  your systemd timer and service units would look something like this (provided
-  you have stored the nft-geo-filter script in /usr/local/bin):
+  table called 'monaco-filter' when you boot your system and then every 12
+  hours thereafter, your systemd timer and service units would look something
+  like this (provided you have stored the nft-geo-filter script in
+  /usr/local/bin):
 
   **nft-geo-filter.timer**
   ```
@@ -490,9 +491,8 @@ to the filtering rules, the script will make them as well.
   Description=nftables Country Filter Timer
 
   [Timer]
-  OnBootSec=5min
+  OnBootSec=1min
   OnUnitActiveSec=12h
-  RandomizedDelaySec=1h
 
   [Install]
   WantedBy=timers.target
