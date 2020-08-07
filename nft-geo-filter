@@ -40,7 +40,6 @@ class GeoFilter:
 
     def configure_logging(self):
         """Configure the logger object for this class"""
-
         logger = logging.getLogger('GeoFilter')
 
         if self.verbosity > 1:
@@ -59,11 +58,8 @@ class GeoFilter:
         # Log format
         formatter = logging.Formatter('%(levelname)s - %(funcName)s - %(message)s')
 
-        # Set the formatter to the stream handler
         sh.setFormatter(formatter)
-
         logger.addHandler(sh)
-
         return logger
 
     def show_subprocess_run_error(self, err):
@@ -118,7 +114,8 @@ class GeoFilter:
             return -1
 
     def find_old_rules(self):
-        """Get a list of all the old rules in the filter-chain and store them."""
+        """Get a list of all the old rules in the filter-chain and store them
+        for deletion."""
         nft_list_command = "{} -j list chain {} {} filter-chain".format(self.nft, self.table_family, self.table_name)
 
         self.logger.info("Finding old filtering rules in the 'filter-chain' chain of the {} table".format(self.table_name))
@@ -140,7 +137,8 @@ class GeoFilter:
 
     def delete_old_rules(self):
         """Delete the old rules in the filter-chain. This should be done after the
-        new filtering rules are added"""
+        new filtering rules are added so that the filtering chain doesn't remain
+        without rules at any point"""
         if self.old_rule_handles:
             nft_delete_tmpl = "{} delete rule {} {} filter-chain handle {}"
             self.logger.info("Deleting old filtering rules from {}'s filter-chain".format(self.table_name))
@@ -283,7 +281,7 @@ class GeoFilter:
             finally:
                 self.set_table_as_dormant(False)
 
-            # Flush the existing filter set
+            # Flush the existing filter set (if it exists)
             self.flush_filter_set(filter_set_name)
 
             self.logger.info('Building list of {} blocks..'.format(log_addr_family))
@@ -305,7 +303,6 @@ class GeoFilter:
                 self.show_subprocess_run_error(err)
                 return -1
 
-            # Delete the tmp file
             os.remove(tmp.name)
 
         # Add the new filtering rule
@@ -329,7 +326,7 @@ if __name__ == '__main__':
                 behaviour.""")
     )
     nft_gfilter_group.add_argument("-c", "--counter", action="store_const", const="counter", default="",
-        help=textwrap.dedent("Add the counter statement to the filtering rules"))
+        help="Add the counter statement to the filtering rules")
 
     # Table info
     table_group = parser.add_argument_group(
