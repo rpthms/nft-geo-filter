@@ -479,9 +479,37 @@ contents of the filtering sets after downloading the IP blocks from ipdeny.com
 and then add the updated IP blocks to the sets. If any changes need to be made
 to the filtering rules, the script will make them as well.
 
-Taking Monaco as an example again, to update the filtering sets in an 'ip'
-table called 'monaco-filter' at 3:00 a.m. every day, your cronjob would look
-like this:
-```
-0 3 * * * nft-geo-filter --table-family ip --table-name monaco-filter MC
-```
+* Taking Monaco as an example again, to update the filtering sets in an 'ip'
+  table called 'monaco-filter' every 12 to 13 hours since you booted your system,
+  your systemd timer and service units would look something like this (provided
+  you have stored the nft-geo-filter script in /usr/local/bin):
+
+  **nft-geo-filter.timer**
+  ```
+  [Unit]
+  Description=nftables Country Filter Timer
+
+  [Timer]
+  OnBootSec=5min
+  OnUnitActiveSec=12h
+  RandomizedDelaySec=1h
+
+  [Install]
+  WantedBy=timers.target
+  ```
+
+  **nft-geo-filter.service**
+  ```
+  [Unit]
+  Description=nftables Country Filter
+
+  [Service]
+  Type=oneshot
+  ExecStart=/usr/local/bin/nft-geo-filter --table-family ip --table-name monaco-filter MC
+  ```
+
+* A cronjob that runs the same nft-geo-filter command provided above at 3:00 a.m.
+  every day would look like this:
+  ```
+  0 3 * * * /usr/local/bin/nft-geo-filter --table-family ip --table-name monaco-filter MC
+  ```
