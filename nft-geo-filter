@@ -78,7 +78,7 @@ class GeoFilter:
         self.logger.info("Adding a {} table: {}".format(self.table_family, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
         try:
-            subprocess.run(nft_command.split(), capture_output=True, check=True)
+            subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -93,7 +93,7 @@ class GeoFilter:
         self.logger.info("{} is dormant: {}".format(self.table_name, is_dormant))
         self.logger.debug("Running command: {}".format(nft_dormant_command))
         try:
-            subprocess.run(nft_dormant_command.split(), capture_output=True, check=True)
+            subprocess.run(nft_dormant_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -111,7 +111,7 @@ class GeoFilter:
         self.logger.info("Adding the 'filter-chain' chain in the {} table".format(self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
         try:
-            subprocess.run(nft_command.split(), capture_output=True, check=True)
+            subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -124,7 +124,7 @@ class GeoFilter:
         self.logger.info("Finding old filtering rules in the 'filter-chain' chain of the {} table".format(self.table_name))
         self.logger.debug("Running command: {}".format(nft_list_command))
         try:
-            result = subprocess.run(nft_list_command.split(), capture_output=True, check=True)
+            result = subprocess.run(nft_list_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -150,7 +150,7 @@ class GeoFilter:
                 nft_delete_command = nft_delete_tmpl.format(self.nft, self.table_family, self.table_name, handle)
                 self.logger.debug("Running command: {}".format(nft_delete_command))
                 try:
-                    subprocess.run(nft_delete_command.split(), capture_output=True, check=True)
+                    subprocess.run(nft_delete_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
                 except subprocess.CalledProcessError as err:
                     self.show_subprocess_run_error(err)
                     return -1
@@ -176,7 +176,7 @@ class GeoFilter:
         self.logger.info("Adding a new filtering rule for {} addresses to {}'s filter-chain".format(filter_set_name, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
         try:
-            subprocess.run(nft_command, capture_output=True, check=True)
+            subprocess.run(nft_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -190,7 +190,7 @@ class GeoFilter:
             self.logger.info("Allow non-IP traffic in {}'s filter-chain".format(self.table_name))
             self.logger.debug("Running command: {}".format(nft_allow_non_ip))
             try:
-                subprocess.run(nft_allow_non_ip.split(), capture_output=True, check=True)
+                subprocess.run(nft_allow_non_ip.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.show_subprocess_run_error(err)
                 return -1
@@ -205,7 +205,7 @@ class GeoFilter:
             self.logger.info("Allow private IPv4 address ranges in {}'s filter-chain".format(self.table_name))
             self.logger.debug("Running command: {}".format(nft_allow_private_ip))
             try:
-                subprocess.run(nft_allow_private_ip.split(), capture_output=True, check=True)
+                subprocess.run(nft_allow_private_ip.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.show_subprocess_run_error(err)
                 return -1
@@ -220,7 +220,7 @@ class GeoFilter:
             self.logger.info("Allow link local IPv6 traffic in {}'s filter-chain".format(self.table_name))
             self.logger.debug("Running command: {}".format(nft_allow_link_local_ip6))
             try:
-                subprocess.run(nft_allow_link_local_ip6.split(), capture_output=True, check=True)
+                subprocess.run(nft_allow_link_local_ip6.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.show_subprocess_run_error(err)
                 return -1
@@ -231,7 +231,7 @@ class GeoFilter:
         self.logger.info("Checking if the {} set exists in the {} table".format(filter_set_name, self.table_name))
         self.logger.debug("Running command: {}".format(nft_list_command))
         try:
-            result = subprocess.run(nft_list_command.split(), capture_output=True, check=True)
+            result = subprocess.run(nft_list_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
             self.show_subprocess_run_error(err)
             return -1
@@ -258,7 +258,7 @@ class GeoFilter:
             self.logger.info('Flushing the {} set in the {} table'.format(filter_set_name, self.table_name))
             self.logger.debug("Running command: {}".format(nft_command))
             try:
-                subprocess.run(nft_command.split(), capture_output=True, check=True)
+                subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.show_subprocess_run_error(err)
                 return -1
@@ -310,7 +310,7 @@ class GeoFilter:
             self.logger.info('Adding the "{}" {} blocks to the {} set in {}'.format(c, log_addr_family, filter_set_name, self.table_name))
             self.logger.debug("Running command: {}".format(nft_command))
             try:
-                subprocess.run(nft_command.split(), capture_output=True, check=True)
+                subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.show_subprocess_run_error(err)
                 return -1
