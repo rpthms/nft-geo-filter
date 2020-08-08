@@ -67,9 +67,9 @@ class GeoFilter:
 
     def show_subprocess_run_error(self, err):
         self.logger.error("Failed to run: {}".format(err.args))
-        self.logger.error("Command exit status: {}".format(err.returncode))
-        self.logger.error("Command stdout: {}".format(err.stdout))
-        self.logger.error("Command stderr: {}".format(err.stderr))
+        self.logger.error("Command exit status: {}\n".format(err.returncode))
+        self.logger.error("Command stdout: \n{}".format(err.stdout.decode("utf-8")))
+        self.logger.error("Command stderr: \n{}".format(err.stderr.decode("utf-8")))
 
     def add_table(self):
         nft_command_tmpl = "{} add table {} {}"
