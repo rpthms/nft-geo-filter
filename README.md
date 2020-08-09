@@ -1,6 +1,14 @@
 # nft-geo-filter
 Allow/deny traffic in nftables using country specific IP blocks
 
+# Requirements
+This script requires nftables >= 0.9.3
+
+# Installation
+Download the script from here:
+https://raw.githubusercontent.com/rpthms/nft-geo-filter/master/nft-geo-filter
+and run it as per your requirements.
+
 # TL;DR
 Run `nft-geo-filter --table-family netdev --interface <interface_to_internet>
 XX` to block packets from the country whose ISO-3166-1 alpha-2 country code is
