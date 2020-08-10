@@ -102,10 +102,10 @@ class GeoFilter:
         policy = "drop" if self.allow else "accept"
 
         if self.table_family == "netdev":
-            nft_command_tmpl = "{} add chain {} {} filter-chain {{ type filter hook ingress device {} priority -200; policy {}; }}"
+            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook ingress device {} priority -200; policy {}; }}"
             nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.interface, policy)
         else:
-            nft_command_tmpl = "{} add chain {} {} filter-chain {{ type filter hook prerouting priority -200; policy {}; }}"
+            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook prerouting priority -200; policy {}; }}"
             nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, policy)
 
         self.logger.info("Adding the 'filter-chain' chain in the {} table".format(self.table_name))
@@ -238,13 +238,14 @@ class GeoFilter:
 
         json_result = json.loads(result.stdout.decode("utf-8"))
 
-        for nft_set in [s for s in json_result["nftables"] if "set" in s]:
-            if (nft_set["set"]["name"] == filter_set_name and
-                nft_set["set"]["family"] == self.table_family and
-                nft_set["set"]["table"] == self.table_name):
+        if json_result["nftables"] is not None:
+            for nft_set in [s for s in json_result["nftables"] if "set" in s]:
+                if (nft_set["set"]["name"] == filter_set_name and
+                    nft_set["set"]["family"] == self.table_family and
+                    nft_set["set"]["table"] == self.table_name):
 
-                self.logger.info("Found set {} in {}!".format(filter_set_name, self.table_name))
-                return True
+                    self.logger.info("Found set {} in {}!".format(filter_set_name, self.table_name))
+                    return True
 
         self.logger.info("Could not find set {} in {}!".format(filter_set_name, self.table_name))
         return False
