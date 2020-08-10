@@ -7,7 +7,6 @@ This script requires nftables >= 0.9.3
 # Installation
 Download the script from here:
 https://raw.githubusercontent.com/rpthms/nft-geo-filter/master/nft-geo-filter
-and run it as per your requirements.
 
 # TL;DR
 Run `nft-geo-filter --table-family netdev --interface <interface_to_internet>
