@@ -80,8 +80,9 @@ class GeoFilter:
         try:
             subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            self.logger.error("Failed to add the {} table: {}".format(self.table_family, self.table_name))
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
     def set_table_as_dormant(self, is_dormant):
         if is_dormant:
@@ -95,8 +96,12 @@ class GeoFilter:
         try:
             subprocess.run(nft_dormant_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            if is_dormant:
+                self.logger.error("Failed to add the dormant flag to the {} table".format(self.table_name))
+            else:
+                self.logger.error("Failed to remove the dormant flag from the {} table".format(self.table_name))
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
     def add_chain(self):
         policy = "drop" if self.allow else "accept"
@@ -113,8 +118,9 @@ class GeoFilter:
         try:
             subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            self.logger.error("Failed to add filter-chain to the {} table".format(self.table_name))
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
     def find_old_rules(self):
         """Get a list of all the old rules in the filter-chain and store them
@@ -126,8 +132,9 @@ class GeoFilter:
         try:
             result = subprocess.run(nft_list_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            self.logger.error("Failed to find the handles of the old filtering rules")
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
         json_result = json.loads(result.stdout.decode("utf-8"))
         self.old_rule_handles = []
@@ -152,8 +159,9 @@ class GeoFilter:
                 try:
                     subprocess.run(nft_delete_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
                 except subprocess.CalledProcessError as err:
+                    self.logger.error("Failed to delete the old filtering rules")
                     self.show_subprocess_run_error(err)
-                    return -1
+                    raise
 
     def create_log_statement(self):
         if self.log:
@@ -178,8 +186,9 @@ class GeoFilter:
         try:
             subprocess.run(nft_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            self.logger.error("Failed to add the new filtering rule for the {} set".format(filter_set_name))
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
     def add_allow_rules(self):
         """Certain rules need to be added to the filter-chain when using --allow, otherwise
@@ -192,8 +201,9 @@ class GeoFilter:
             try:
                 subprocess.run(nft_allow_non_ip.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to add the rule to allow non-IP traffic in {}'s filter-chain".format(self.table_name))
                 self.show_subprocess_run_error(err)
-                return -1
+                raise
 
         if self.table_family in ("ip","inet") or (self.table_family == "netdev" and not self.no_ipv4):
             if self.table_family == "netdev":
@@ -207,8 +217,9 @@ class GeoFilter:
             try:
                 subprocess.run(nft_allow_private_ip.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to add the rule to allow private IPv4 address ranges in {}'s filter-chain".format(self.table_name))
                 self.show_subprocess_run_error(err)
-                return -1
+                raise
 
         if self.table_family in ("ip6","inet") or (self.table_family == "netdev" and not self.no_ipv6):
             if self.table_family == "netdev":
@@ -222,8 +233,9 @@ class GeoFilter:
             try:
                 subprocess.run(nft_allow_link_local_ip6.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to add the rule to allow link local IPv6 traffic in {}'s filter-chain".format(self.table_name))
                 self.show_subprocess_run_error(err)
-                return -1
+                raise
 
     def does_set_exist(self, filter_set_name):
         nft_list_command = "{} -j list sets {}".format(self.nft, self.table_family)
@@ -233,8 +245,9 @@ class GeoFilter:
         try:
             result = subprocess.run(nft_list_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
+            self.logger.error("Could not list the existing sets in the {} family".format(self.table_family))
             self.show_subprocess_run_error(err)
-            return -1
+            raise
 
         json_result = json.loads(result.stdout.decode("utf-8"))
 
@@ -261,8 +274,9 @@ class GeoFilter:
             try:
                 subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
+                self.logger.error("Could not flush the {} set in the {} table".format(filter_set_name, self.table_name))
                 self.show_subprocess_run_error(err)
-                return -1
+                raise
 
     def update_filter_set(self, addr_family):
         if addr_family == 'AF_INET':
@@ -290,7 +304,7 @@ class GeoFilter:
                 data = ip_blocks.read().decode('utf-8')
             except urllib.error.HTTPError as err:
                 self.logger.error("Couldn't GET {}: {} {}".format(ipdeny_url.format(c), err.code, err.reason))
-                continue
+                raise
             finally:
                 self.set_table_as_dormant(False)
 
@@ -313,15 +327,14 @@ class GeoFilter:
             try:
                 subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
+                self.logger.error('Could not add the "{}" {} blocks to the {} set in {}'.format(c, log_addr_family, filter_set_name, self.table_name))
                 self.show_subprocess_run_error(err)
-                return -1
+                raise
 
             os.remove(tmp.name)
 
         # Add the new filtering rule
-        if self.add_filtering_rule(addr_family) == -1:
-            self.logger.error("Failed to add the new filtering rule for the {} set".format(log_addr_family))
-            sys.exit(1)
+        self.add_filtering_rule(addr_family)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Filter traffic in nftables using country IP blocks')
@@ -403,26 +416,25 @@ if __name__ == '__main__':
 
     gFilter = GeoFilter(args)
 
-    # Ensure that the target nft table and chain exists
-    if gFilter.add_table() == -1:
-        sys.exit("Failed to add the target nftables table")
-    if gFilter.add_chain() == -1:
-        sys.exit("Failed to add the target nftables chain")
+    try:
+        # Ensure that the target nft table and chain exists
+        gFilter.add_table()
+        gFilter.add_chain()
 
-    # Store the handles of the old filtering rules
-    if gFilter.find_old_rules() == -1:
-        sys.exit("Failed to find the handles of the old filtering rules")
+        # Store the handles of the old filtering rules
+        gFilter.find_old_rules()
 
-    # Start updating the filter sets!
-    if args.table_family in ("ip","inet") or (args.table_family == "netdev" and not args.no_ipv4):
-        gFilter.update_filter_set('AF_INET')
-    if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
-        gFilter.update_filter_set('AF_INET6')
+        # Start updating the filter sets!
+        if args.table_family in ("ip","inet") or (args.table_family == "netdev" and not args.no_ipv4):
+            gFilter.update_filter_set('AF_INET')
+        if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
+            gFilter.update_filter_set('AF_INET6')
 
-    # If we're using --allow, need to add some extra rules
-    if args.allow and gFilter.add_allow_rules() == -1:
-        sys.exit("Failed to add the rules needed for --allow to work")
+        # If we're using --allow, need to add some extra rules
+        if args.allow:
+            gFilter.add_allow_rules()
 
-    # Delete the old rules
-    if gFilter.delete_old_rules() == -1:
-        sys.exit("Failed to delete the old filtering rules")
+        # Delete the old rules
+        gFilter.delete_old_rules()
+    except (subprocess.CalledProcessError, urllib.error.HTTPError):
+        sys.exit(1)
