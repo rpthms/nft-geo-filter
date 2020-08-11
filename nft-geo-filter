@@ -174,19 +174,19 @@ class GeoFilter:
 
     def add_filtering_rule(self, addr_family):
         action = "accept" if self.allow else "drop"
-        filter_set_name = "filter-v4" if addr_family == "AF_INET" else "filter-v6"
-        nft_protocol = "ip" if addr_family == "AF_INET" else "ip6"
+        filter_set_name = "filter-v4" if addr_family == "ip" else "filter-v6"
+        log_addr_family = "IPv4" if addr_family == "ip" else "IPv6"
 
         nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {} {} {}"
-        nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, nft_protocol,
+        nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, addr_family,
             filter_set_name, self.counter, self.create_log_statement(), action).split()
 
-        self.logger.info("Adding a new filtering rule for {} addresses to {}'s filter-chain".format(filter_set_name, self.table_name))
+        self.logger.info("Adding a new filtering rule for {} addresses in {}'s filter-chain".format(log_addr_family, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
         try:
             subprocess.run(nft_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as err:
-            self.logger.error("Failed to add the new filtering rule for the {} set".format(filter_set_name))
+            self.logger.error("Failed to add the new filtering rule for the {} addresses".format(log_addr_family))
             self.show_subprocess_run_error(err)
             raise
 
@@ -279,12 +279,12 @@ class GeoFilter:
                 raise
 
     def update_filter_set(self, addr_family):
-        if addr_family == 'AF_INET':
+        if addr_family == 'ip':
             ipdeny_url = IPDENY_V4_URL
             filter_set_type = "ipv4_addr"
             filter_set_name = "filter-v4"
             log_addr_family = "IPv4"
-        elif addr_family == 'AF_INET6':
+        elif addr_family == 'ip6':
             ipdeny_url = IPDENY_V6_URL
             filter_set_type = "ipv6_addr"
             filter_set_name = "filter-v6"
@@ -426,9 +426,9 @@ if __name__ == '__main__':
 
         # Start updating the filter sets!
         if args.table_family in ("ip","inet") or (args.table_family == "netdev" and not args.no_ipv4):
-            gFilter.update_filter_set('AF_INET')
+            gFilter.update_filter_set('ip')
         if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
-            gFilter.update_filter_set('AF_INET6')
+            gFilter.update_filter_set('ip6')
 
         # If we're using --allow, need to add some extra rules
         if args.allow:
