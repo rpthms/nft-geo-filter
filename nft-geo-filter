@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,7 +40,14 @@ class GeoFilter:
         self.log_level = args.log_level
         self.verbosity = args.verbose
 
+        self.working_dir = tempfile.mkdtemp()
         self.logger = self.configure_logging()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.delete_working_dir()
 
     def configure_logging(self):
         """Configure the logger object for this class"""
@@ -64,6 +72,10 @@ class GeoFilter:
         sh.setFormatter(formatter)
         logger.addHandler(sh)
         return logger
+
+    def delete_working_dir(self):
+        self.logger.info("Deleting the working directory")
+        shutil.rmtree(self.working_dir)
 
     def show_subprocess_run_error(self, err):
         self.logger.error("Failed to run: {}".format(err.args))
@@ -264,19 +276,44 @@ class GeoFilter:
         return False
 
     def flush_filter_set(self, filter_set_name):
-        nft_command_tmpl = "{} flush set {} {} {}"
-
+        """Flush the contents of the specified set. But before that, we want to save the
+           contents of the old set, so that we can restore it if an error occurs."""
         if self.does_set_exist(filter_set_name):
-            nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, filter_set_name)
+            nft_list_command = "{} list set {} {} {}".format(self.nft, self.table_family, self.table_name, filter_set_name)
+            try:
+                list_result = subprocess.run(nft_list_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Could not list the {} set in the {} table".format(filter_set_name, self.table_name))
+                self.show_subprocess_run_error(err)
+                raise
+
+            with open("{}/old_sets".format(self.working_dir), mode="ab") as f:
+                f.write(list_result.stdout)
+
+            nft_flush_command = "{} flush set {} {} {}".format(self.nft, self.table_family, self.table_name, filter_set_name)
 
             self.logger.info('Flushing the {} set in the {} table'.format(filter_set_name, self.table_name))
-            self.logger.debug("Running command: {}".format(nft_command))
+            self.logger.debug("Running command: {}".format(nft_flush_command))
             try:
-                subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                subprocess.run(nft_flush_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error("Could not flush the {} set in the {} table".format(filter_set_name, self.table_name))
                 self.show_subprocess_run_error(err)
                 raise
+
+    def restore_old_sets(self):
+        """Restore the old sets. This only happens if we failed to update the existing
+           sets of the filter table"""
+        nft_restore_command = "{} -f {}".format(self.nft, "{}/old_sets".format(self.working_dir))
+
+        self.logger.info('Restoring the old sets in the {} table'.format(self.table_name))
+        self.logger.debug("Running command: {}".format(nft_restore_command))
+        try:
+            subprocess.run(nft_restore_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error('Could not restore the old sets in the {} table'.format(self.table_name))
+            self.show_subprocess_run_error(err)
+            raise
 
     def update_filter_set(self, addr_family):
         if addr_family == 'ip':
@@ -289,6 +326,9 @@ class GeoFilter:
             filter_set_type = "ipv6_addr"
             filter_set_name = "filter-v6"
             log_addr_family = "IPv6"
+
+        # Flush the existing filter set (if it exists)
+        self.flush_filter_set(filter_set_name)
 
         for c in self.country_codes:
             # We need to set the table as dormant before we try to download the IP blocks, because
@@ -304,19 +344,17 @@ class GeoFilter:
                 data = ip_blocks.read().decode('utf-8')
             except urllib.error.HTTPError as err:
                 self.logger.error("Couldn't GET {}: {} {}".format(ipdeny_url.format(c), err.code, err.reason))
+                self.restore_old_sets()
                 raise
             finally:
                 self.set_table_as_dormant(False)
-
-            # Flush the existing filter set (if it exists)
-            self.flush_filter_set(filter_set_name)
 
             self.logger.info('Building list of {} blocks..'.format(log_addr_family))
             filter_set_ips = ',\n'.join(data.splitlines())
             self.logger.debug("IP block list for {}: {}".format(c, filter_set_ips))
             filter_set_ips = ''.join(('elements = {\n', filter_set_ips, '\n}\n}\n}'))
 
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(mode='w', dir=self.working_dir, delete=False) as tmp:
                 tmp.write(FILE_HEADER.format(self.table_family, self.table_name, filter_set_name, filter_set_type))
                 tmp.write(filter_set_ips)
 
@@ -328,10 +366,9 @@ class GeoFilter:
                 subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error('Could not add the "{}" {} blocks to the {} set in {}'.format(c, log_addr_family, filter_set_name, self.table_name))
+                self.restore_old_sets()
                 self.show_subprocess_run_error(err)
                 raise
-
-            os.remove(tmp.name)
 
         # Add the new filtering rule
         self.add_filtering_rule(addr_family)
@@ -414,27 +451,26 @@ if __name__ == '__main__':
     if (args.log_prefix or args.log_level) and not args.log:
         sys.exit("Can't use '--log-prefix', '--log-level' or '--log-flags' without the '--log' argument.")
 
-    gFilter = GeoFilter(args)
+    with GeoFilter(args) as gFilter:
+        try:
+            # Ensure that the target nft table and chain exists
+            gFilter.add_table()
+            gFilter.add_chain()
 
-    try:
-        # Ensure that the target nft table and chain exists
-        gFilter.add_table()
-        gFilter.add_chain()
+            # Store the handles of the old filtering rules
+            gFilter.find_old_rules()
 
-        # Store the handles of the old filtering rules
-        gFilter.find_old_rules()
+            # Start updating the filter sets!
+            if args.table_family in ("ip","inet") or (args.table_family == "netdev" and not args.no_ipv4):
+                gFilter.update_filter_set('ip')
+            if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
+                gFilter.update_filter_set('ip6')
 
-        # Start updating the filter sets!
-        if args.table_family in ("ip","inet") or (args.table_family == "netdev" and not args.no_ipv4):
-            gFilter.update_filter_set('ip')
-        if args.table_family in ("ip6","inet") or (args.table_family == "netdev" and not args.no_ipv6):
-            gFilter.update_filter_set('ip6')
+            # If we're using --allow, need to add some extra rules
+            if args.allow:
+                gFilter.add_allow_rules()
 
-        # If we're using --allow, need to add some extra rules
-        if args.allow:
-            gFilter.add_allow_rules()
-
-        # Delete the old rules
-        gFilter.delete_old_rules()
-    except (subprocess.CalledProcessError, urllib.error.HTTPError):
-        sys.exit(1)
+            # Delete the old rules
+            gFilter.delete_old_rules()
+        except (subprocess.CalledProcessError, urllib.error.HTTPError):
+            sys.exit(1)
