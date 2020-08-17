@@ -77,15 +77,23 @@ provide the name of the interface that's connected to the internet by using the
 `--interface` flag. The interface is needed because netdev tables work on a
 per-interface basis.
 
-# Allow mode exceptions
-When you use `--allow`, certain rules are added along with the regular
-filtering rules to ensure that your regular traffic is not impeded. These rules
-ensure that:
+# Allow mode implicit exceptions
+When you use `--allow`, certain rules are automatically added along with the
+regular filtering rules to ensure that your regular traffic is not impeded.
+These rules ensure that:
 
 1. Traffic from private IPv4 address ranges and link-local IPv6 address ranges
 are allowed to pass through.
 2. Traffic from the localhost is allowed to pass through.
 3. Non-IP traffic such as ARP is not blocked when using the netdev table.
+
+# Manual exceptions
+You can create exceptions for a few IP addresses so that they pass through the
+filtering sets that were set up. To do that provide a comma separated list of
+IPs that need to be exempted from filtering to the `--exceptions` flag. This
+will create rules that would explicitly allow packets from the specified IP
+addresses, even if the filtering sets would block them. Check the "Usage
+examples" section below to see how the `--exceptions` flag can be used.
 
 # What do I need to add to my nftables config?
 **Nothing!** Since this script creates a separate nftables table to filter your
@@ -108,7 +116,7 @@ using the `--log` argument. You can optionally provide a prefix to the log
 messages for easier identification, using the `--log-prefix` argument and
 change the log severity level from 'warn' by using the `--log-level` argument.
 
-# Help Text
+# Help text
 Run `nft-geo-filter -h` to get the following help text:
 ```
 usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [-c] [-f {ip,ip6,inet,netdev}]
@@ -475,6 +483,86 @@ the following examples:
                 type filter hook prerouting priority -200; policy accept;
                 ip saddr @filter-v4 log prefix "MC-Block " level info drop
                 ip6 saddr @filter-v6 log prefix "MC-Block " level info drop
+        }
+  }
+  ```
+
+* Only allow packets from Monaco but create exceptions for Cloudflare's DNS service
+  **Command to run**: `nft-geo-filter --exceptions 1.0.0.1,1.1.1.1,2606:4700:4700::1001,2606:4700:4700::1111 --allow MC`
+  **Resulting ruleset**:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy drop;
+                ip saddr { 1.0.0.1, 1.1.1.1 } accept
+                ip6 saddr { 2606:4700:4700::1001, 2606:4700:4700::1111 } accept
+                ip6 saddr { ::1, fe80::/10 } accept
+                ip saddr { 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
+                ip saddr @filter-v4 accept
+                ip6 saddr @filter-v6 accept
+        }
+  }
+  ```
+
+* Block all packets from Monaco except the packets from 80.94.96.0/24 and 2a07:9080:100:100::/64
+  **Command to run**: `nft-geo-filter --exceptions 80.94.96.0/24,2a07:9080:100:100::/64 MC`
+  **Resulting ruleset**:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -200; policy accept;
+                ip saddr { 80.94.96.0/24 } accept
+                ip6 saddr { 2a07:9080:100:100::/64 } accept
+                ip saddr @filter-v4 drop
+                ip6 saddr @filter-v6 drop
         }
   }
   ```

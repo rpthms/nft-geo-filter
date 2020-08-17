@@ -3,6 +3,7 @@
 # Python script for filtering traffic in nftables using country IP blocks
 
 import argparse
+import ipaddress
 import json
 import logging
 import os
@@ -201,6 +202,40 @@ class GeoFilter:
             self.logger.error("Failed to add the new filtering rule for the {} addresses".format(log_addr_family))
             self.show_subprocess_run_error(err)
             raise
+
+    def add_exceptions(self):
+        ip_list = args.exceptions.split(',')
+
+        try:
+            v4_list = [addr for addr in ip_list if ipaddress.ip_network(addr, strict=False).version == 4]
+            v6_list = [addr for addr in ip_list if ipaddress.ip_network(addr, strict=False).version == 6]
+        except ValueError as err:
+            self.logger.error("ValueError raised: {}".format(err))
+            raise
+
+        if v6_list:
+            nft_allow_v6_exceptions = "{} insert rule {} {} filter-chain ip6 saddr {{ {} }} accept".format(
+                self.nft, self.table_family, self.table_name, ",".join(v6_list))
+            self.logger.info("Adding IPv6 exceptions in {}'s filter-chain".format(self.table_name))
+            self.logger.debug("Running command: {}".format(nft_allow_v6_exceptions))
+            try:
+                subprocess.run(nft_allow_v6_exceptions.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to add IPv6 exceptions in {}'s filter-chain".format(self.table_name))
+                self.show_subprocess_run_error(err)
+                raise
+
+        if v4_list:
+            nft_allow_v4_exceptions = "{} insert rule {} {} filter-chain ip saddr {{ {} }} accept".format(
+                self.nft, self.table_family, self.table_name, ",".join(v4_list))
+            self.logger.info("Adding IPv4 exceptions in {}'s filter-chain".format(self.table_name))
+            self.logger.debug("Running command: {}".format(nft_allow_v4_exceptions))
+            try:
+                subprocess.run(nft_allow_v4_exceptions.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to add IPv4 exceptions in {}'s filter-chain".format(self.table_name))
+                self.show_subprocess_run_error(err)
+                raise
 
     def add_allow_rules(self):
         """Certain rules need to be added to the filter-chain when using --allow, otherwise
@@ -434,6 +469,16 @@ if __name__ == '__main__':
     log_group.add_argument("--log-level", choices=["emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"],
         help="Set the log message severity level. Default is 'warn'.")
 
+    exception_group = parser.add_argument_group(
+        title="IP Exceptions",
+        description=textwrap.dedent("""You can add exceptions for certain IPs by passing a comma separated list
+            of IPs or subnets/prefixes to the '--exceptions' option. The IP addresses passed to this option will
+            be explicitly allowed in the filtering chain created by this script. Both IPv4 and IPv6 addresses
+            can be passed. Use this option to allow a few IP addresses that would otherwise be denied by your
+            filtering sets.""")
+    )
+    exception_group.add_argument("-e", "--exceptions", metavar="ADDRESSES")
+
     # Mandatory arguments
     parser.add_argument("country", nargs='+',
         help=textwrap.dedent("""2 letter ISO-3166-1 alpha-2 country codes to block. Check
@@ -470,7 +515,11 @@ if __name__ == '__main__':
             if args.allow:
                 gFilter.add_allow_rules()
 
+            # If exceptions have been provided, add rules for them
+            if args.exceptions:
+                gFilter.add_exceptions()
+
             # Delete the old rules
             gFilter.delete_old_rules()
-        except (subprocess.CalledProcessError, urllib.error.HTTPError):
+        except (ValueError, subprocess.CalledProcessError, urllib.error.HTTPError):
             sys.exit(1)
