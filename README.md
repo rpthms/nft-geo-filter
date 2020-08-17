@@ -2,7 +2,7 @@
 Allow/deny traffic in nftables using country specific IP blocks
 
 # Requirements
-This script requires nftables >= 0.9.3
+This script requires nftables >= 0.9.0
 
 # Installation
 Download the script from here:
