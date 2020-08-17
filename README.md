@@ -121,7 +121,7 @@ Run `nft-geo-filter -h` to get the following help text:
 ```
 usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [-c] [-f {ip,ip6,inet,netdev}]
                       [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-o] [--log-prefix PREFIX]
-                      [--log-level {emerg,alert,crit,err,warn,notice,info,debug}]
+                      [--log-level {emerg,alert,crit,err,warn,notice,info,debug}] [-e ADDRESSES]
                       country [country ...]
 
 Filter traffic in nftables using country IP blocks
@@ -157,7 +157,7 @@ Netdev arguments:
   If you're using a netdev table, you need to provide the name of the interface which is
   connected to the internet because netdev tables work on a per-interface basis. You can also
   choose to only store v4 or only store v6 addresses inside the netdev table sets by providing
-  the '-4' or '-6' arguments. Both v4 and v6 addresses are stored by default
+  the '--no-ipv6' or '--no-ipv4' arguments. Both v4 and v6 addresses are stored by default
 
   -i INTERFACE, --interface INTERFACE
                         Specify the ingress interface for the netdev table
@@ -176,6 +176,15 @@ Logging statement:
                         used by default.
   --log-level {emerg,alert,crit,err,warn,notice,info,debug}
                         Set the log message severity level. Default is 'warn'.
+
+IP Exceptions:
+  You can add exceptions for certain IPs by passing a comma separated list of IPs or
+  subnets/prefixes to the '--exceptions' option. The IP addresses passed to this option will be
+  explicitly allowed in the filtering chain created by this script. Both IPv4 and IPv6
+  addresses can be passed. Use this option to allow a few IP addresses that would otherwise be
+  denied by your filtering sets.
+
+  -e ADDRESSES, --exceptions ADDRESSES
 ```
 
 # Usage examples
