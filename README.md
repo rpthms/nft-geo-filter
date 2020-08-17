@@ -487,8 +487,8 @@ the following examples:
   }
   ```
 
-* Only allow packets from Monaco but create exceptions for Cloudflare's DNS service
-  **Command to run**: `nft-geo-filter --exceptions 1.0.0.1,1.1.1.1,2606:4700:4700::1001,2606:4700:4700::1111 --allow MC`
+* Only allow packets from Monaco but create exceptions for Cloudflare's DNS service\
+  **Command to run**: `nft-geo-filter --exceptions 1.0.0.1,1.1.1.1,2606:4700:4700::1001,2606:4700:4700::1111 --allow MC`\
   **Resulting ruleset**:
   ```
   table inet geo-filter {
@@ -528,8 +528,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco except the packets from 80.94.96.0/24 and 2a07:9080:100:100::/64
-  **Command to run**: `nft-geo-filter --exceptions 80.94.96.0/24,2a07:9080:100:100::/64 MC`
+* Block all packets from Monaco except the packets from `80.94.96.0/24` and `2a07:9080:100:100::/64`\
+  **Command to run**: `nft-geo-filter --exceptions 80.94.96.0/24,2a07:9080:100:100::/64 MC`\
   **Resulting ruleset**:
   ```
   table inet geo-filter {
