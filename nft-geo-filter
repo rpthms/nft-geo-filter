@@ -410,8 +410,8 @@ if __name__ == '__main__':
         description=textwrap.dedent("""If you're using a netdev table, you need to provide the name of the
                     interface which is connected to the internet because netdev tables work on a per-interface
                     basis. You can also choose to only store v4 or only store v6 addresses inside the
-                    netdev table sets by providing the '-4' or '-6' arguments. Both v4 and v6 addresses are
-                    stored by default""")
+                    netdev table sets by providing the '--no-ipv6' or '--no-ipv4' arguments. Both v4 and v6
+                    addresses are stored by default""")
     )
     netdev_group.add_argument("-i", "--interface",
         help="Specify the ingress interface for the netdev table")
