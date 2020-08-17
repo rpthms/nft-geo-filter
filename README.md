@@ -90,8 +90,9 @@ are allowed to pass through.
 # What do I need to add to my nftables config?
 **Nothing!** Since this script creates a separate nftables table to filter your
 traffic, it will not cause your current nftables config to break. The
-"filter-chain" chain created by this script has a priority of -200 to ensure
-that the filtering rules of this script are applied before your own rules.
+"filter-chain" chain created by this script has a high priority of -200 to
+ensure that the filtering rules of this script are applied before your own
+rules (Most people won't be using a filter chain with such a high priority).
 
 # Other options
 By default, nft-geo-filter uses `/usr/sbin/nft` as the path to the nft binary.
