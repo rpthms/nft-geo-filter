@@ -237,6 +237,20 @@ class GeoFilter:
                 self.show_subprocess_run_error(err)
                 raise
 
+    def allow_established(self):
+        nft_command = "{} insert rule {} {} filter-chain ct state established,related accept".format(self.nft,
+            self.table_family, self.table_name)
+
+        self.logger.info("Adding a rule to allow packets from established connections in {}'s filter-chain".format(
+            self.table_name))
+        self.logger.debug("Running command: {}".format(nft_command))
+        try:
+            subprocess.run(nft_command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Failed to add the rule to allow packets from established connections")
+            self.show_subprocess_run_error(err)
+            raise
+
     def add_allow_rules(self):
         """Certain rules need to be added to the filter-chain when using --allow, otherwise
            LAN traffic and protocols such as ARP won't work"""
@@ -423,6 +437,12 @@ if __name__ == '__main__':
                 IP will be allowed to pass the filtering chain. Provide this argument to reverse this
                 behaviour.""")
     )
+    nft_gfilter_group.add_argument("--allow-established", action="store_true",
+        help=textwrap.dedent("""Allow packets from denied IPs, but only if they are a part of an established
+                connection i.e the initial packet originated from your host. Initial packets from the denied IPs
+                will still be dropped. This flag can be useful when using the allow mode, so that outgoing connections
+                to addresses outside the filter set can still be made.""")
+    )
     nft_gfilter_group.add_argument("-c", "--counter", action="store_const", const="counter", default="",
         help="Add the counter statement to the filtering rules")
 
@@ -493,6 +513,8 @@ if __name__ == '__main__':
     # Check the arguments
     if args.table_family == "netdev" and not args.interface:
         sys.exit("'netdev' family requires an 'interface'. Please provide an interface with --interface")
+    if args.table_family == "netdev" and args.allow_established:
+        sys.exit("Can't use '--allow-established' with the 'netdev' family. Please choose a different table family.")
     if (args.log_prefix or args.log_level) and not args.log:
         sys.exit("Can't use '--log-prefix', '--log-level' or '--log-flags' without the '--log' argument.")
 
@@ -518,6 +540,10 @@ if __name__ == '__main__':
             # If exceptions have been provided, add rules for them
             if args.exceptions:
                 gFilter.add_exceptions()
+
+            # If we're allowing established connections from denied IPs, add a rule for that
+            if args.allow_established:
+                gFilter.allow_established()
 
             # Delete the old rules
             gFilter.delete_old_rules()

@@ -87,6 +87,20 @@ are allowed to pass through.
 2. Traffic from the localhost is allowed to pass through.
 3. Non-IP traffic such as ARP is not blocked when using the netdev table.
 
+# Allow outgoing connections to denied IPs
+In case you want to make connections to IP addresses that are being denied by
+the filtering sets, you can use the `--allow-established` flag. This will add a
+rule to the filter-chain to allow packets from all established and related
+connections (i.e the first packet of the connection should originate from your
+host). Initial packets from the denied IPs will always be denied.
+
+This flag is really handy when combined with `--allow`, which lets you limit
+the incoming connections to certain countries while letting you create outgoing
+connections to any country without any restrictions. Check the example titled
+'Only allow incoming packets from Monaco but still allow outgoing connections
+to any country' in the section below to get an idea about the
+`--allow-established` flag.
+
 # Manual exceptions
 You can create exceptions for a few IP addresses so that they pass through the
 filtering sets that were set up. To do that provide a comma separated list of
@@ -122,8 +136,9 @@ change the log severity level from 'warn' by using the `--log-level` argument.
 # Help text
 Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [-c] [-f {ip,ip6,inet,netdev}]
-                      [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-o] [--log-prefix PREFIX]
+usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-established] [-c]
+                      [-f {ip,ip6,inet,netdev}] [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6]
+                      [-o] [--log-prefix PREFIX]
                       [--log-level {emerg,alert,crit,err,warn,notice,info,debug}] [-e ADDRESSES]
                       country [country ...]
 
@@ -143,6 +158,11 @@ optional arguments:
   -a, --allow           By default, all the IPs in the filter sets will be denied and every other
                         IP will be allowed to pass the filtering chain. Provide this argument to
                         reverse this behaviour.
+  --allow-established   Allow packets from denied IPs, but only if they are a part of an
+                        established connection i.e the initial packet originated from your host.
+                        Initial packets from the denied IPs will still be dropped. This flag can
+                        be useful when using the allow mode, so that outgoing connections to
+                        addresses outside the filter set can still be made.
   -c, --counter         Add the counter statement to the filtering rules
 
 Table:
@@ -227,7 +247,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook ingress device "enp1s0" priority -200; policy accept;
+                type filter hook ingress device "enp1s0" priority -190; policy accept;
                 ip saddr @filter-v4 drop
                 ip6 saddr @filter-v6 drop
         }
@@ -255,7 +275,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook ingress device "enp1s0" priority -200; policy accept;
+                type filter hook ingress device "enp1s0" priority -190; policy accept;
                 ip saddr @filter-v4 drop
         }
   }
@@ -291,7 +311,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook ingress device "enp1s0" priority -200; policy drop;
+                type filter hook ingress device "enp1s0" priority -190; policy drop;
                 ip6 saddr fe80::/10 accept
                 ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
                 meta protocol != { ip, ip6 } accept
@@ -322,7 +342,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip saddr @filter-v4 counter packets 0 bytes 0 drop
         }
   }
@@ -343,7 +363,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip6 saddr @filter-v6 drop
         }
   }
@@ -379,7 +399,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy drop;
+                type filter hook prerouting priority -190; policy drop;
                 ip6 saddr { ::1, fe80::/10 } accept
                 ip saddr { 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
                 ip saddr @filter-v4 accept
@@ -418,7 +438,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip saddr @filter-v4 drop
                 ip6 saddr @filter-v6 drop
         }
@@ -455,7 +475,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip saddr @filter-v4 log drop
                 ip6 saddr @filter-v6 log drop
         }
@@ -492,7 +512,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip saddr @filter-v4 log prefix "MC-Block " level info drop
                 ip6 saddr @filter-v6 log prefix "MC-Block " level info drop
         }
@@ -529,7 +549,7 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy drop;
+                type filter hook prerouting priority -190; policy drop;
                 ip saddr { 1.0.0.1, 1.1.1.1 } accept
                 ip6 saddr { 2606:4700:4700::1001, 2606:4700:4700::1111 } accept
                 ip6 saddr { ::1, fe80::/10 } accept
@@ -570,11 +590,51 @@ the following examples:
         }
 
         chain filter-chain {
-                type filter hook prerouting priority -200; policy accept;
+                type filter hook prerouting priority -190; policy accept;
                 ip saddr { 80.94.96.0/24 } accept
                 ip6 saddr { 2a07:9080:100:100::/64 } accept
                 ip saddr @filter-v4 drop
                 ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
+* Only allow incoming packets from Monaco but still allow outgoing connections to any country\
+  **Command to run**: `nft-geo-filter --allow --allow-established MC`\
+  **Resulting ruleset**:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 176.114.96.0/20,
+                             185.47.116.0/22, 185.162.120.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21,
+                             213.137.128.0/19 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -190; policy drop;
+                ct state established,related accept
+                ip6 saddr { ::1, fe80::/10 } accept
+                ip saddr { 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
+                ip saddr @filter-v4 accept
+                ip6 saddr @filter-v6 accept
         }
   }
   ```
