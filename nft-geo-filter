@@ -120,10 +120,10 @@ class GeoFilter:
         policy = "drop" if self.allow else "accept"
 
         if self.table_family == "netdev":
-            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook ingress device {} priority -200; policy {}; }}"
+            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook ingress device {} priority -190; policy {}; }}"
             nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.interface, policy)
         else:
-            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook prerouting priority -200; policy {}; }}"
+            nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook prerouting priority -190; policy {}; }}"
             nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, policy)
 
         self.logger.info("Adding the filter-chain in the {} table".format(self.table_name))
