@@ -128,18 +128,22 @@ You can also add counters to your filtering rules to see how many packets have
 been dropped/accepted. Just add the `--counter` argument when calling the
 script.
 
-Filtering rules can also log the packets that are allowed or denied by them, by
-using the `--log` argument. You can optionally provide a prefix to the log
-messages for easier identification, using the `--log-prefix` argument and
-change the log severity level from 'warn' by using the `--log-level` argument.
+Filtering rules can also log the packets that are accepted or droped by them, by
+using the `--log-accept` or the `--log-drop` arguments. You can optionally provide 
+a prefix to the log messages for easier identification, using the `--log-accept-prefix`,
+`--log-drop-prefix` arguments and change the log severity level from 'warn' by using
+ the `--log-accept-level` and `--log-drop-level` arguments.
 
 # Help text
 Run `nft-geo-filter -h` to get the following help text:
 ```
 usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-established] [-c]
                       [-f {ip,ip6,inet,netdev}] [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6]
-                      [-o] [--log-prefix PREFIX]
-                      [--log-level {emerg,alert,crit,err,warn,notice,info,debug}] [-e ADDRESSES]
+                      [-p] [--log-accept-prefix PREFIX]
+                      [--log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}] [-o]
+                      [--log-drop-prefix PREFIX]
+                      [--log-drop-level {emerg,alert,crit,err,warn,notice,info,debug}]
+                      [-e ADDRESSES]
                       country [country ...]
 
 Filter traffic in nftables using country IP blocks
@@ -189,16 +193,23 @@ Netdev arguments:
 
 Logging statement:
   You can optionally add the logging statement to the filtering rules added by this script.
-  That way, you'll be able to see the IP addresses of the packets that are allowed or denied by
-  the filtering rules in the kernel log (which can be read via the systemd journal or syslog).
-  You can also add an optional prefix to the log messages and change the log message severity
-  level.
+  That way, you'll be able to see the IP addresses of the packets that are accepted or dropped
+  by the filtering rules in the kernel log (which can be read via the systemd journal or
+  syslog). You can also add an optional prefix to the log messages and change the log message
+  severity level.
 
-  -o, --log             Add the log statement to the filtering rules
-  --log-prefix PREFIX   Add a prefix to the log messages for easier identification. No prefix is
-                        used by default.
-  --log-level {emerg,alert,crit,err,warn,notice,info,debug}
-                        Set the log message severity level. Default is 'warn'.
+  -p, --log-accept      Add the log statement to the accept filtering rules
+  --log-accept-prefix PREFIX
+                        Add a prefix to the accept log messages for easier identification. No
+                        prefix is used by default.
+  --log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}
+                        Set the accept log message severity level. Default is 'warn'.
+  -o, --log-drop        Add the log statement to the drop filtering rules
+  --log-drop-prefix PREFIX
+                        Add a prefix to the drop log messages for easier identification. No
+                        prefix is used by default.
+  --log-drop-level {emerg,alert,crit,err,warn,notice,info,debug}
+                        Set the drop log message severity level. Default is 'warn'.
 
 IP Exceptions:
   You can add exceptions for certain IPs by passing a comma separated list of IPs or
@@ -445,8 +456,8 @@ the following examples:
   }
   ```
 
-* Block all packets from Monaco using an inet table named 'monaco-filter' and log the packets\
-  **Command to run**: `nft-geo-filter --table-name monaco-filter --log MC`\
+* Block all packets from Monaco using an inet table named 'monaco-filter' and log the dropped packets\
+  **Command to run**: `nft-geo-filter --table-name monaco-filter --log-drop MC`\
   **Resulting ruleset**:
   ```
   table inet monaco-filter {
@@ -483,7 +494,7 @@ the following examples:
   ```
 
 * Block all packets from Monaco and log them using the 'MC-Block ' log prefix and the 'info' log level\
-  **Command to run**: `nft-geo-filter --log --log-prefix 'MC-Block ' --log-level info MC`\
+  **Command to run**: `nft-geo-filter --log-drop --log-drop-prefix 'MC-Block ' --log-drop-level info MC`\
   **Resulting ruleset**:
   ```
   table inet geo-filter {
