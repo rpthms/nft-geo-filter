@@ -36,13 +36,18 @@ class GeoFilter:
         self.no_ipv4 = args.no_ipv4
         self.no_ipv6 = args.no_ipv6
         self.counter = args.counter
-        self.log = args.log
-        self.log_prefix = args.log_prefix
-        self.log_level = args.log_level
+        self.log_accept = args.log_accept
+        self.log_accept_prefix = args.log_accept_prefix
+        self.log_accept_level = args.log_accept_level
+        self.log_drop = args.log_drop
+        self.log_drop_prefix = args.log_drop_prefix
+        self.log_drop_level = args.log_drop_level
         self.verbosity = args.verbose
 
         self.working_dir = tempfile.mkdtemp()
         self.logger = self.configure_logging()
+
+        self.policy = "drop" if self.allow else "accept"
 
     def __enter__(self):
         return self
@@ -117,14 +122,13 @@ class GeoFilter:
             raise
 
     def add_chain(self):
-        policy = "drop" if self.allow else "accept"
 
         if self.table_family == "netdev":
             nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook ingress device {} priority -190; policy {}; }}"
-            nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.interface, policy)
+            nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.interface, self.policy)
         else:
             nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook prerouting priority -190; policy {}; }}"
-            nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, policy)
+            nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.policy)
 
         self.logger.info("Adding the filter-chain in the {} table".format(self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
@@ -176,11 +180,19 @@ class GeoFilter:
                     self.show_subprocess_run_error(err)
                     raise
 
-    def create_log_statement(self):
-        if self.log:
+    def create_log_statement(self, action):
+        """ Construct the logging as specified by command line args.
+        for a rule with the specified action"""
+        is_accept = action == "accept"
+        if (self.log_accept and is_accept) or (self.log_drop and not is_accept):
+
+            # Extract the log parameters for this type of action
+            log_prefix = self.log_accept_prefix if is_accept else self.log_drop_prefix
+            log_level = self.log_accept_level if is_accept else self.log_drop_level
+
             return "log {} {}".format(
-                "prefix \"{}\"".format(self.log_prefix) if self.log_prefix else "",
-                "level {}".format(self.log_level) if self.log_level else ""
+                "prefix \"{}\"".format(log_prefix) if log_prefix else "",
+                "level {}".format(log_level) if log_level else ""
             )
         else:
             return ""
@@ -192,7 +204,7 @@ class GeoFilter:
 
         nft_command_tmpl = "{} add rule {} {} filter-chain {} saddr @{} {} {} {}"
         nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, addr_family,
-            filter_set_name, self.counter, self.create_log_statement(), action).split()
+            filter_set_name, self.counter, self.create_log_statement(action), action).split()
 
         self.logger.info("Adding a new filtering rule for {} addresses in {}'s filter-chain".format(log_addr_family, self.table_name))
         self.logger.debug("Running command: {}".format(nft_command))
@@ -295,6 +307,22 @@ class GeoFilter:
                 subprocess.run(nft_allow_link_local_ip6.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error("Failed to add the rule to allow link local IPv6 traffic in {}'s filter-chain".format(self.table_name))
+                self.show_subprocess_run_error(err)
+                raise
+
+    def add_policy_logging_rule(self):
+        """Append a final rule with same action of the policy if 
+        counter or logging with match to policy if required"""
+        log_statement = self.create_log_statement(self.policy)
+        if log_statement != "" or self.counter == "counter":
+            nft_unmatched_logging = "{} add rule {} {} filter-chain {} {} {}".format(
+                self.nft, self.table_family, self.table_name, self.counter, log_statement, self.policy)
+            self.logger.info("Appending {} to {}'s filter-chain to attach logging/counter".format(self.policy, self.table_name))
+            self.logger.debug("Running command: {}".format(nft_unmatched_logging))
+            try:
+                subprocess.run(nft_unmatched_logging.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Failed to append a {} rule to attach logging/counter in {}'s filter-chain".format(self.policy, self.table_name))
                 self.show_subprocess_run_error(err)
                 raise
 
@@ -478,16 +506,21 @@ if __name__ == '__main__':
     log_group = parser.add_argument_group(
         title="Logging statement",
         description=textwrap.dedent("""You can optionally add the logging statement to the filtering rules added
-                by this script. That way, you'll be able to see the IP addresses of the packets that are allowed
-                or denied by the filtering rules in the kernel log (which can be read via the systemd journal or
+                by this script. That way, you'll be able to see the IP addresses of the packets that are accepted
+                or dropped by the filtering rules in the kernel log (which can be read via the systemd journal or
                 syslog). You can also add an optional prefix to the log messages and change the log message
                 severity level.""")
     )
-    log_group.add_argument("-o", "--log", action="store_true", help="Add the log statement to the filtering rules")
-    log_group.add_argument("--log-prefix", metavar="PREFIX", help=textwrap.dedent("""Add a prefix to the log messages
+    log_group.add_argument("-p", "--log-accept", action="store_true", help="Add the log statement to the accept filtering rules")
+    log_group.add_argument("--log-accept-prefix", metavar="PREFIX", help=textwrap.dedent("""Add a prefix to the accept log messages
         for easier identification. No prefix is used by default."""))
-    log_group.add_argument("--log-level", choices=["emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"],
-        help="Set the log message severity level. Default is 'warn'.")
+    log_group.add_argument("--log-accept-level", choices=["emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"],
+        help="Set the acceptlog message severity level. Default is 'warn'.")
+    log_group.add_argument("-o", "--log-drop", action="store_true", help="Add the log statement to the drop filtering rules")
+    log_group.add_argument("--log-drop-prefix", metavar="PREFIX", help=textwrap.dedent("""Add a prefix to the drop log messages
+        for easier identification. No prefix is used by default."""))
+    log_group.add_argument("--log-drop-level", choices=["emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"],
+        help="Set the drop log message severity level. Default is 'warn'.")
 
     exception_group = parser.add_argument_group(
         title="IP Exceptions",
@@ -515,8 +548,10 @@ if __name__ == '__main__':
         sys.exit("'netdev' family requires an 'interface'. Please provide an interface with --interface")
     if args.table_family == "netdev" and args.allow_established:
         sys.exit("Can't use '--allow-established' with the 'netdev' family. Please choose a different table family.")
-    if (args.log_prefix or args.log_level) and not args.log:
-        sys.exit("Can't use '--log-prefix', '--log-level' or '--log-flags' without the '--log' argument.")
+    if (args.log_accept_prefix or args.log_accept_level) and not args.log_accept:
+        sys.exit("Can't use '--log-accept-prefix', '--log-accept-level' without the '--log-accept' argument.")
+    if (args.log_drop_prefix or args.log_drop_level) and not args.log_drop:
+        sys.exit("Can't use '--log-drop-prefix', '--log-drop-level' without the '--log-drop' argument.")
 
     with GeoFilter(args) as gFilter:
         try:
@@ -544,6 +579,9 @@ if __name__ == '__main__':
             # If we're allowing established connections from denied IPs, add a rule for that
             if args.allow_established:
                 gFilter.allow_established()
+
+            # Add a final rule matching the policy if logging/counters are required
+            gFilter.add_policy_logging_rule()
 
             # Delete the old rules
             gFilter.delete_old_rules()
