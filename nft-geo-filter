@@ -394,10 +394,10 @@ class GeoFilter:
 
     def get_ip_blocks(self, country_code, addr_family):
         # We need to set the table as dormant before we try to download the IP blocks, because
-        # there is a possibility that ipdeny.com's IP address might be blocked by the filtering
-        # rule that was added when this script was previously executed. The dormant flag is
-        # removed as soon as the download is finished. By doing this, we are disabling the
-        # geo-filtering as little as possible.
+        # there is a possibility that the IP blocks provider's address might be blocked by the
+        # filtering rule that was added when this script was previously executed. The dormant
+        # flag is removed as soon as the download is finished. By doing this, we are disabling
+        # the geo-filtering as little as possible.
         self.set_table_as_dormant(True)
 
         log_addr_family = "IPv4" if addr_family == 'ip' else "IPv6"
@@ -566,8 +566,8 @@ if __name__ == '__main__':
 
     # Mandatory arguments
     parser.add_argument("country", nargs='+',
-        help=textwrap.dedent("""2 letter ISO-3166-1 alpha-2 country codes to block. Check
-            https://www.ipdeny.com/ipblocks/ to find the list of supported countries.""")
+        help=textwrap.dedent("""2 letter ISO-3166-1 alpha-2 country codes to allow/block. Check
+            your IP blocks provider to find the list of supported countries.""")
     )
 
     args = parser.parse_args()
