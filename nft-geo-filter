@@ -406,11 +406,11 @@ class GeoFilter:
         try:
             if self.provider == 'ipdeny.com':
                 if addr_family == 'ip':
-                    ipdeny_url = 'https://www.ipdeny.com/ipblocks/data/aggregated/{}-aggregated.zone'
+                    provider_url = 'https://www.ipdeny.com/ipblocks/data/aggregated/{}-aggregated.zone'
                 else:
-                    ipdeny_url = 'https://www.ipdeny.com/ipv6/ipaddresses/aggregated/{}-aggregated.zone'
+                    provider_url = 'https://www.ipdeny.com/ipv6/ipaddresses/aggregated/{}-aggregated.zone'
 
-                http_resp = urllib.request.urlopen(ipdeny_url.format(country_code))
+                http_resp = urllib.request.urlopen(provider_url.format(country_code))
                 data = http_resp.read().decode('utf-8')
 
                 self.logger.info('Building list of {} blocks for {}..'.format(log_addr_family, country_code))
@@ -420,11 +420,11 @@ class GeoFilter:
                 return ip_blocks
             elif self.provider == 'ipverse.net':
                 if addr_family == 'ip':
-                    ipdeny_url = 'http://ipverse.net/ipblocks/data/countries/{}.zone'
+                    provider_url = 'http://ipverse.net/ipblocks/data/countries/{}.zone'
                 else:
-                    ipdeny_url = 'http://ipverse.net/ipblocks/data/countries/{}-ipv6.zone'
+                    provider_url = 'http://ipverse.net/ipblocks/data/countries/{}-ipv6.zone'
 
-                http_resp = urllib.request.urlopen(ipdeny_url.format(country_code))
+                http_resp = urllib.request.urlopen(provider_url.format(country_code))
                 data = http_resp.read().decode('utf-8')
 
                 self.logger.info('Building list of {} blocks for {}..'.format(log_addr_family, country_code))
@@ -438,7 +438,7 @@ class GeoFilter:
 
                 return ip_blocks
         except urllib.error.HTTPError as err:
-            self.logger.error("Couldn't GET {}: {} {}".format(ipdeny_url.format(country_code), err.code, err.reason))
+            self.logger.error("Couldn't GET {}: {} {}".format(provider_url.format(country_code), err.code, err.reason))
             self.restore_old_sets()
             raise
         finally:
