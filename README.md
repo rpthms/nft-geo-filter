@@ -16,10 +16,14 @@ that's connected to the internet (Eg:- eth0).
 
 # Description
 This script will download IPv4 or/and IPv6 blocks for the specified countries
-from ipdeny.com and add them to sets in the specified table. You have to
-provide 2 letter ISO-3166-1 alpha-2 country codes of the countries you want to
-filter as positional arguments to this script. Go to
-https://www.ipdeny.com/ipblocks/ to find the list of supported countries.
+from one of the supported IP blocks provider and add them to sets in the
+specified table. You have to provide 2 letter ISO-3166-1 alpha-2 country codes
+of the countries you want to filter as positional arguments to this script.
+
+nft-geo-filter supports 2 IP Blocks provider at this point:
+
+* **ipdeny.com** - https://www.ipdeny.com/ipblocks/
+* **ipverse.net** - http://ipverse.net/
 
 You can specify which table holds the sets and the filtering rules using the
 `--table-family` and `--table-name` flags. `--table-name` specifies the name of
@@ -129,7 +133,7 @@ been dropped/accepted. Just add the `--counter` argument when calling the
 script.
 
 Filtering rules can also log the packets that are accepted or droped by them, by
-using the `--log-accept` or the `--log-drop` arguments. You can optionally provide 
+using the `--log-accept` or the `--log-drop` arguments. You can optionally provide
 a prefix to the log messages for easier identification, using the `--log-accept-prefix`,
 `--log-drop-prefix` arguments and change the log severity level from 'warn' by using
  the `--log-accept-level` and `--log-drop-level` arguments.
@@ -138,8 +142,8 @@ a prefix to the log messages for easier identification, using the `--log-accept-
 Run `nft-geo-filter -h` to get the following help text:
 ```
 usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-established] [-c]
-                      [-f {ip,ip6,inet,netdev}] [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6]
-                      [-p] [--log-accept-prefix PREFIX]
+                      [--provider {ipdeny.com,ipverse.net}] [-f {ip,ip6,inet,netdev}] [-n NAME]
+                      [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-p] [--log-accept-prefix PREFIX]
                       [--log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}] [-o]
                       [--log-drop-prefix PREFIX]
                       [--log-drop-level {emerg,alert,crit,err,warn,notice,info,debug}]
@@ -149,8 +153,8 @@ usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-establis
 Filter traffic in nftables using country IP blocks
 
 positional arguments:
-  country               2 letter ISO-3166-1 alpha-2 country codes to block. Check
-                        https://www.ipdeny.com/ipblocks/ to find the list of supported countries.
+  country               2 letter ISO-3166-1 alpha-2 country codes to allow/block. Check your IP
+                        blocks provider to find the list of supported countries.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -168,6 +172,8 @@ optional arguments:
                         be useful when using the allow mode, so that outgoing connections to
                         addresses outside the filter set can still be made.
   -c, --counter         Add the counter statement to the filtering rules
+  --provider {ipdeny.com,ipverse.net}
+                        Specify the country IP blocks provider. Default is ipdeny.com
 
 Table:
   Provide the name and the family of the table in which the set of filtered addresses will be
@@ -650,13 +656,53 @@ the following examples:
   }
   ```
 
+* Download IP blocks from ipverse.net instead of ipdeny.com to block packets from Monaco\
+  **Command to run**: `nft-geo-filter --provider ipverse.net MC`\
+  **Resulting ruleset**:
+  ```
+  table inet geo-filter {
+        set filter-v4 {
+                type ipv4_addr
+                flags interval
+                auto-merge
+                elements = { 37.44.224.0/22, 80.94.96.0/20,
+                             82.113.0.0/19, 87.238.104.0/21,
+                             87.254.224.0/19, 88.209.64.0/18,
+                             91.199.109.0/24, 91.213.192.0/24,
+                             176.114.96.0/20, 185.47.116.0/22,
+                             185.162.120.0/22, 185.193.108.0/22,
+                             185.250.4.0/22, 188.191.136.0/21,
+                             193.34.228.0/23, 193.35.2.0/23,
+                             194.9.12.0/23, 195.20.192.0/23,
+                             195.78.0.0/19, 213.133.72.0/21 }
+        }
+
+        set filter-v6 {
+                type ipv6_addr
+                flags interval
+                auto-merge
+                elements = { 2a01:8fe0::/32,
+                             2a06:92c0::/32,
+                             2a07:9080::/29,
+                             2a0b:8000::/29,
+                             2a0f:b980::/29 }
+        }
+
+        chain filter-chain {
+                type filter hook prerouting priority -190; policy accept;
+                ip saddr @filter-v4 drop
+                ip6 saddr @filter-v6 drop
+        }
+  }
+  ```
+
 # Run nft-geo-filter as a service
 nft-geo-filter can also be run via a cronjob or a systemd timer to keep your
 filtering sets updated. When nft-geo-filter is executed, it will check if the
 target sets already exist. It they do, the script will flush the existing
-contents of the filtering sets after downloading the IP blocks from ipdeny.com
-and then add the updated IP blocks to the sets. If any changes need to be made
-to the filtering rules, the script will make them as well.
+contents of the filtering sets after downloading the IP blocks and then add the
+updated IP blocks to the sets. If any changes need to be made to the filtering
+rules, the script will make them as well.
 
 * Taking Monaco as an example again, to update the filtering sets in an 'ip'
   table called 'monaco-filter' when you boot your system and then every 12
