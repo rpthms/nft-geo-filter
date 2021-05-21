@@ -44,6 +44,7 @@ class GeoFilter:
         self.verbosity = args.verbose
         self.provider = args.provider
 
+        self.reset_dormancy = True
         self.working_dir = tempfile.mkdtemp()
         self.logger = self.configure_logging()
 
@@ -122,7 +123,6 @@ class GeoFilter:
             raise
 
     def add_chain(self):
-
         if self.table_family == "netdev":
             nft_command_tmpl = "{} -- add chain {} {} filter-chain {{ type filter hook ingress device {} priority -190; policy {}; }}"
             nft_command = nft_command_tmpl.format(self.nft, self.table_family, self.table_name, self.interface, self.policy)
@@ -379,8 +379,16 @@ class GeoFilter:
                 raise
 
     def restore_old_sets(self):
-        """Restore the old sets. This only happens if we failed to update the existing
-           sets of the filter table"""
+        """Restore the old sets if we failed to update the existing sets of the filter table. If
+           we were creating new sets and failed to do so, and we also happen to be using the allow
+           mode, then set the filter table to dormant because we don't want to end up accidentally
+           blocking all incoming connections and locking ourselves out of the server"""
+        if not os.path.exists("{}/old_sets".format(self.working_dir)):
+            self.logger.warning('No old sets detected. Setting the {} table as dormant!'.format(self.table_name))
+            self.reset_dormancy = False
+            self.set_table_as_dormant(True)
+            return
+
         nft_restore_command = "{} -f {}".format(self.nft, "{}/old_sets".format(self.working_dir))
 
         self.logger.info('Restoring the old sets in the {} table'.format(self.table_name))
@@ -416,8 +424,6 @@ class GeoFilter:
                 self.logger.info('Building list of {} blocks for {}..'.format(log_addr_family, country_code))
                 ip_blocks = ',\n'.join(data.splitlines())
                 self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
-
-                return ip_blocks
             elif self.provider == 'ipverse.net':
                 if addr_family == 'ip':
                     provider_url = 'http://ipverse.net/ipblocks/data/countries/{}.zone'
@@ -436,13 +442,18 @@ class GeoFilter:
                 ip_blocks = ',\n'.join(data_without_comments)
                 self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
 
-                return ip_blocks
+            return ip_blocks
         except urllib.error.HTTPError as err:
             self.logger.error("Couldn't GET {}: {} {}".format(provider_url.format(country_code), err.code, err.reason))
             self.restore_old_sets()
             raise
+        except urllib.error.URLError as err:
+            self.logger.error("Couldn't GET {}: {}".format(provider_url.format(country_code), err.reason))
+            self.restore_old_sets()
+            raise
         finally:
-            self.set_table_as_dormant(False)
+            if self.reset_dormancy:
+                self.set_table_as_dormant(False)
 
     def update_filter_set(self, addr_family):
         if addr_family == 'ip':
@@ -617,5 +628,5 @@ if __name__ == '__main__':
 
             # Delete the old rules
             gFilter.delete_old_rules()
-        except (ValueError, subprocess.CalledProcessError, urllib.error.HTTPError):
+        except (ValueError, subprocess.CalledProcessError, urllib.error.HTTPError, urllib.error.URLError):
             sys.exit(1)
