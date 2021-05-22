@@ -381,7 +381,7 @@ class GeoFilter:
     def restore_old_sets(self):
         """Restore the old sets if we failed to update the existing sets of the filter table. If
            we were creating new sets and failed to do so, then set the filter table to dormant
-           because we don't want to end up accidentally lock ourselves out of the server"""
+           because we don't want to accidentally lock ourselves out of the server"""
         if not os.path.exists("{}/old_sets".format(self.working_dir)):
             self.logger.warning('No old sets detected. Setting the {} table as dormant!'.format(self.table_name))
             self.reset_dormancy = False
