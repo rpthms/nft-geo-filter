@@ -513,8 +513,8 @@ if __name__ == '__main__':
     )
     nft_gfilter_group.add_argument("-c", "--counter", action="store_const", const="counter", default="",
         help="Add the counter statement to the filtering rules")
-    nft_gfilter_group.add_argument("--provider", action="store", default="ipdeny.com", choices=SUPPORTED_PROVIDERS,
-        help="Specify the country IP blocks provider. Default is ipdeny.com")
+    nft_gfilter_group.add_argument("--provider", action="store", default="ipverse.net", choices=SUPPORTED_PROVIDERS,
+        help="Specify the country IP blocks provider. Default is ipverse.net")
 
     # Table info
     table_group = parser.add_argument_group(

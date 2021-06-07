@@ -22,8 +22,8 @@ of the countries you want to filter as positional arguments to this script.
 
 nft-geo-filter supports 2 IP Blocks provider at this point:
 
-* **ipdeny.com** - https://www.ipdeny.com/ipblocks/
 * **ipverse.net** - http://ipverse.net/
+* **ipdeny.com** - https://www.ipdeny.com/ipblocks/
 
 You can specify which table holds the sets and the filtering rules using the
 `--table-family` and `--table-name` flags. `--table-name` specifies the name of
@@ -173,7 +173,7 @@ optional arguments:
                         addresses outside the filter set can still be made.
   -c, --counter         Add the counter statement to the filtering rules
   --provider {ipdeny.com,ipverse.net}
-                        Specify the country IP blocks provider. Default is ipdeny.com
+                        Specify the country IP blocks provider. Default is ipverse.net
 
 Table:
   Provide the name and the family of the table in which the set of filtered addresses will be
@@ -656,8 +656,8 @@ the following examples:
   }
   ```
 
-* Download IP blocks from ipverse.net instead of ipdeny.com to block packets from Monaco\
-  **Command to run**: `nft-geo-filter --provider ipverse.net MC`\
+* Download IP blocks from ipdeny.com instead of ipverse.net to block packets from Monaco\
+  **Command to run**: `nft-geo-filter --provider ipdeny.com MC`\
   **Resulting ruleset**:
   ```
   table inet geo-filter {
