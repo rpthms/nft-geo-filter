@@ -22,7 +22,7 @@ FILE_HEADER = ('table {} {} {{\n'
                'flags interval\n'
                'auto-merge\n')
 
-SUPPORTED_PROVIDERS = ('ipdeny.com', 'ipverse.net')
+SUPPORTED_PROVIDERS = ('ipdeny.com', 'ipverse.net', 'blocklist.de', 'iplists.firehol.org')
 
 class GeoFilter:
     def __init__(self, args):
@@ -438,6 +438,35 @@ class GeoFilter:
                 data_list = data.splitlines()
                 data_without_comments = [d for d in data_list if d[0] != '#']
 
+                ip_blocks = ',\n'.join(data_without_comments)
+                self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
+            elif self.provider == 'blocklist.de':
+                provider_url = 'http://lists.blocklist.de/lists/{}.txt'
+
+                http_resp = urllib.request.urlopen(provider_url.format(country_code))
+                data = http_resp.read().decode('utf-8')
+
+                self.logger.info('Building list of {} blocks for {}..'.format(log_addr_family, country_code))
+                data_list = data.splitlines()
+                if addr_family == 'ip':
+                    filtered = [x for x in data_list if (':' not in x)]
+                else:
+                    filtered = [x for x in data_list if (':' in x)]
+                ip_blocks = ',\n'.join(filtered)
+                self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
+            elif self.provider == 'iplists.firehol.org':
+                #provider_url = 'http://iplists.firehol.org/files/{}.netset'
+                provider_url = 'https://raw.githubusercontent.com/ktsaou/blocklist-ipsets/master/{}.netset'
+
+                http_resp = urllib.request.urlopen(provider_url.format(country_code))
+                data = http_resp.read().decode('utf-8')
+
+                self.logger.info('Building list of {} blocks for {}..'.format(log_addr_family, country_code))
+                if addr_family == 'ip':
+                    data_list = data.splitlines()
+                else:
+                    data_list = []
+                data_without_comments = [d for d in data_list if d[0] != '#']
                 ip_blocks = ',\n'.join(data_without_comments)
                 self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
 
