@@ -20,10 +20,11 @@ from one of the supported IP blocks provider and add them to sets in the
 specified table. You have to provide 2 letter ISO-3166-1 alpha-2 country codes
 of the countries you want to filter as positional arguments to this script.
 
-nft-geo-filter supports 2 IP Blocks provider at this point:
+nft-geo-filter supports three IP Blocks provider at this point:
 
 * **ipverse.net** - http://ipverse.net/
 * **ipdeny.com** - https://www.ipdeny.com/ipblocks/
+* **MaxMind GeoIP2 and GeoLite2** - https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
 
 You can specify which table holds the sets and the filtering rules using the
 `--table-family` and `--table-name` flags. `--table-name` specifies the name of
@@ -141,11 +142,14 @@ a prefix to the log messages for easier identification, using the `--log-accept-
 # Help text
 Run `nft-geo-filter -h` to get the following help text:
 ```
-usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-established] [-c]
-                      [--provider {ipdeny.com,ipverse.net}] [-f {ip,ip6,inet,netdev}] [-n NAME]
-                      [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-p] [--log-accept-prefix PREFIX]
-                      [--log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}] [-o]
-                      [--log-drop-prefix PREFIX]
+usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a]
+                      [--allow-established] [-c]
+                      [--provider {ipdeny.com,ipverse.net,maxmind}]
+                      [--maxmind-zip MAXMIND_ZIP] [-f {ip,ip6,inet,netdev}]
+                      [-n NAME] [-i INTERFACE] [--no-ipv4 | --no-ipv6] [-p]
+                      [--log-accept-prefix PREFIX]
+                      [--log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}]
+                      [-o] [--log-drop-prefix PREFIX]
                       [--log-drop-level {emerg,alert,crit,err,warn,notice,info,debug}]
                       [-e ADDRESSES]
                       country [country ...]
@@ -153,8 +157,9 @@ usage: nft-geo-filter [-h] [-v] [--version] [-l LOCATION] [-a] [--allow-establis
 Filter traffic in nftables using country IP blocks
 
 positional arguments:
-  country               2 letter ISO-3166-1 alpha-2 country codes to allow/block. Check your IP
-                        blocks provider to find the list of supported countries.
+  country               2 letter ISO-3166-1 alpha-2 country codes to
+                        allow/block. Check your IP blocks provider to find the
+                        list of supported countries.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -163,23 +168,31 @@ optional arguments:
 
   -l LOCATION, --nft-location LOCATION
                         Location of the nft binary. Default is /usr/sbin/nft
-  -a, --allow           By default, all the IPs in the filter sets will be denied and every other
-                        IP will be allowed to pass the filtering chain. Provide this argument to
-                        reverse this behaviour.
-  --allow-established   Allow packets from denied IPs, but only if they are a part of an
-                        established connection i.e the initial packet originated from your host.
-                        Initial packets from the denied IPs will still be dropped. This flag can
-                        be useful when using the allow mode, so that outgoing connections to
-                        addresses outside the filter set can still be made.
+  -a, --allow           By default, all the IPs in the filter sets will be
+                        denied and every other IP will be allowed to pass the
+                        filtering chain. Provide this argument to reverse this
+                        behaviour.
+  --allow-established   Allow packets from denied IPs, but only if they are a
+                        part of an established connection i.e the initial
+                        packet originated from your host. Initial packets from
+                        the denied IPs will still be dropped. This flag can be
+                        useful when using the allow mode, so that outgoing
+                        connections to addresses outside the filter set can
+                        still be made.
   -c, --counter         Add the counter statement to the filtering rules
-  --provider {ipdeny.com,ipverse.net}
-                        Specify the country IP blocks provider. Default is ipverse.net
+  --provider {ipdeny.com,ipverse.net,maxmind}
+                        Specify the country IP blocks provider. Default is
+                        ipverse.net
+  --maxmind-zip MAXMIND_ZIP
+                        If using the maxmind provider, path to the 'GeoLite2
+                        Country: CSV Format' zip
 
 Table:
-  Provide the name and the family of the table in which the set of filtered addresses will be
-  created. This script will create a new nftables table, so make sure the provided table name
-  is unique and not being used by any other table in the ruleset. An 'inet' table called 'geo-
-  filter' will be used by default
+  Provide the name and the family of the table in which the set of filtered
+  addresses will be created. This script will create a new nftables table,
+  so make sure the provided table name is unique and not being used by any
+  other table in the ruleset. An 'inet' table called 'geo-filter' will be
+  used by default
 
   -f {ip,ip6,inet,netdev}, --table-family {ip,ip6,inet,netdev}
                         Specify the table's family. Default is inet
@@ -187,42 +200,49 @@ Table:
                         Specify the table's name. Default is geo-filter
 
 Netdev arguments:
-  If you're using a netdev table, you need to provide the name of the interface which is
-  connected to the internet because netdev tables work on a per-interface basis. You can also
-  choose to only store v4 or only store v6 addresses inside the netdev table sets by providing
-  the '--no-ipv6' or '--no-ipv4' arguments. Both v4 and v6 addresses are stored by default
+  If you're using a netdev table, you need to provide the name of the
+  interface which is connected to the internet because netdev tables work on
+  a per-interface basis. You can also choose to only store v4 or only store
+  v6 addresses inside the netdev table sets by providing the '--no-ipv6' or
+  '--no-ipv4' arguments. Both v4 and v6 addresses are stored by default
 
   -i INTERFACE, --interface INTERFACE
                         Specify the ingress interface for the netdev table
-  --no-ipv4             Don't create a set for v4 addresses in the netdev table
-  --no-ipv6             Don't create a set for v6 addresses in the netdev table
+  --no-ipv4             Don't create a set for v4 addresses in the netdev
+                        table
+  --no-ipv6             Don't create a set for v6 addresses in the netdev
+                        table
 
 Logging statement:
-  You can optionally add the logging statement to the filtering rules added by this script.
-  That way, you'll be able to see the IP addresses of the packets that are accepted or dropped
-  by the filtering rules in the kernel log (which can be read via the systemd journal or
-  syslog). You can also add an optional prefix to the log messages and change the log message
+  You can optionally add the logging statement to the filtering rules added
+  by this script. That way, you'll be able to see the IP addresses of the
+  packets that are accepted or dropped by the filtering rules in the kernel
+  log (which can be read via the systemd journal or syslog). You can also
+  add an optional prefix to the log messages and change the log message
   severity level.
 
   -p, --log-accept      Add the log statement to the accept filtering rules
   --log-accept-prefix PREFIX
-                        Add a prefix to the accept log messages for easier identification. No
-                        prefix is used by default.
+                        Add a prefix to the accept log messages for easier
+                        identification. No prefix is used by default.
   --log-accept-level {emerg,alert,crit,err,warn,notice,info,debug}
-                        Set the accept log message severity level. Default is 'warn'.
+                        Set the acceptlog message severity level. Default is
+                        'warn'.
   -o, --log-drop        Add the log statement to the drop filtering rules
   --log-drop-prefix PREFIX
-                        Add a prefix to the drop log messages for easier identification. No
-                        prefix is used by default.
+                        Add a prefix to the drop log messages for easier
+                        identification. No prefix is used by default.
   --log-drop-level {emerg,alert,crit,err,warn,notice,info,debug}
-                        Set the drop log message severity level. Default is 'warn'.
+                        Set the drop log message severity level. Default is
+                        'warn'.
 
 IP Exceptions:
-  You can add exceptions for certain IPs by passing a comma separated list of IPs or
-  subnets/prefixes to the '--exceptions' option. The IP addresses passed to this option will be
-  explicitly allowed in the filtering chain created by this script. Both IPv4 and IPv6
-  addresses can be passed. Use this option to allow a few IP addresses that would otherwise be
-  denied by your filtering sets.
+  You can add exceptions for certain IPs by passing a comma separated list
+  of IPs or subnets/prefixes to the '--exceptions' option. The IP addresses
+  passed to this option will be explicitly allowed in the filtering chain
+  created by this script. Both IPv4 and IPv6 addresses can be passed. Use
+  this option to allow a few IP addresses that would otherwise be denied by
+  your filtering sets.
 
   -e ADDRESSES, --exceptions ADDRESSES
 ```
@@ -738,3 +758,28 @@ rules, the script will make them as well.
   ```
   0 3 * * * /usr/local/bin/nft-geo-filter --table-family ip --table-name monaco-filter MC
   ```
+
+# Using the MaxMind GeoIP data set
+MaxMind has [free and paid GeoIP data sets](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data). Note
+that you must sign up for an account and follow their EULA. However, the free set [can be used for blocking 
+connections by region](https://support.maxmind.com/hc/en-us/articles/4408935918363).
+
+You must download the 'GeoLite2 Country: CSV Format' ZIP file and pass it with `--maxmind-zip` to use
+the MaxMind GeoIP data set. When you set up your account you can create a 'License Key' and use that to 
+[automate the download](https://dev.maxmind.com/geoip/updating-databases?lang=en#directly-downloading-databases) of
+new ZIP files.
+
+The MaxMind integration supports blocking all European Union member countries. Simply pass `european_union` as one
+of the country arguments:
+```
+nft-geo-filter --provider maxmind --maxmind-zip ./countrycsv.zip --table-family netdev \
+               --interface eth0 european_union
+```
+
+You can also block IP ranges by continent. Pass `continent_XX` as a country argument, where XX is one of
+`AF` (Africa), `AS` (Asia), `EU` (Europe), `OC` (Oceania), `AN` (Antarctica), `NA` (North America),
+`SA` (South America). New continents will be added to the list as plate tectonics change.
+```
+nft-geo-filter --provider maxmind --maxmind-zip ./countrycsv.zip --table-family netdev \
+               --interface eth0 continent_AN
+```
