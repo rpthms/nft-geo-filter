@@ -425,9 +425,10 @@ class GeoFilter:
                 self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
             elif self.provider == 'ipverse.net':
                 if addr_family == 'ip':
-                    provider_url = 'http://ipverse.net/ipblocks/data/countries/{}.zone'
+                    provider_url = 'https://raw.githubusercontent.com/ipverse/rir-ip/master/country/{}/ipv4-aggregated.txt'
+
                 else:
-                    provider_url = 'http://ipverse.net/ipblocks/data/countries/{}-ipv6.zone'
+                    provider_url = 'https://raw.githubusercontent.com/ipverse/rir-ip/master/country/{}/ipv6-aggregated.txt'
 
                 http_resp = urllib.request.urlopen(provider_url.format(country_code))
                 data = http_resp.read().decode('utf-8')
