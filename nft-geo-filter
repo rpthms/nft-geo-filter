@@ -22,9 +22,18 @@ FILE_HEADER = ('table {} {} {{\n'
                'flags interval\n'
                'auto-merge\n')
 
-SUPPORTED_PROVIDERS = ('ipdeny.com', 'ipverse.net')
+SUPPORTED_PROVIDERS = ('ipdeny.com', 'ipverse.net', 'maxmind')
+
 
 class GeoFilter:
+    __slots__ = ['nft', 'allow', 'table_family', 'table_name',
+                 'interface', 'country_codes', 'no_ipv4', 'no_ipv6',
+                 'counter', 'log_accept', 'log_accept_prefix',
+                 'log_accept_level', 'log_drop', 'log_drop_prefix',
+                 'log_drop_level', 'verbosity', 'provider', 'maxmind_zip',
+                 'reset_dormancy', 'working_dir', 'logger', 'policy',
+                 'old_rule_handles']
+
     def __init__(self, args):
         self.nft = args.nft_location
         self.allow = args.allow
@@ -43,12 +52,15 @@ class GeoFilter:
         self.log_drop_level = args.log_drop_level
         self.verbosity = args.verbose
         self.provider = args.provider
+        self.maxmind_zip = args.maxmind_zip
 
         self.reset_dormancy = True
         self.working_dir = tempfile.mkdtemp()
         self.logger = self.configure_logging()
 
         self.policy = "drop" if self.allow else "accept"
+
+        self.old_rule_handles = []
 
     def __enter__(self):
         return self
@@ -154,7 +166,6 @@ class GeoFilter:
             raise
 
         json_result = json.loads(result.stdout.decode("utf-8"))
-        self.old_rule_handles = []
 
         # Get the handles of all the rules in the filter-chain
         for rule in [r for r in json_result["nftables"] if "rule" in r]:
@@ -441,6 +452,59 @@ class GeoFilter:
 
                 ip_blocks = ',\n'.join(data_without_comments)
                 self.logger.debug("IP block list for {}: {}".format(country_code, ip_blocks))
+            elif self.provider == 'maxmind':
+                import csv
+                import codecs
+                import zipfile
+
+                geoname_ids = set()
+                ip_ranges = []
+                utf8_info = codecs.lookup('UTF-8')
+                is_continent_search = country_code.startswith('continent')
+                continent_code_needle = country_code[len('continent_'):]
+                is_eu_search = country_code == 'european_union'
+
+                if not self.maxmind_zip:
+                    raise Exception('Maxmind provider requires path to maxmind zip')
+
+                zf = zipfile.ZipFile(self.maxmind_zip)
+                locations_name = [filename for filename in zf.namelist() if filename.endswith('GeoLite2-Country-Locations-en.csv')]
+                if len(locations_name) != 1:
+                    raise Exception("Unable to find 'GeoLite2-Country-Locations-en.csv' in CSV")
+                locations_name = locations_name[0]
+
+                ip_name = [filename for filename in zf.namelist() if filename.endswith('GeoLite2-Country-Blocks-{}.csv'.format(log_addr_family))]
+                if len(ip_name) != 1:
+                    raise Exception("Unable to find 'GeoLite2-Country-Blocks-{}.csv' in CSV".format(log_addr_family))
+                ip_name = ip_name[0]
+
+                with zf.open(locations_name) as locations_fd:
+                    locations_text_fd = utf8_info.streamreader(locations_fd)
+                    locations_reader = csv.reader(locations_text_fd)
+
+                    # skip header
+                    next(locations_reader)
+
+                    for geoname_id, _, continent_code, _, country_iso_code, _, is_eu in locations_reader:
+                        if is_continent_search and continent_code.lower() == continent_code_needle:
+                            geoname_ids.add(geoname_id)
+                        elif is_eu_search and int(is_eu):
+                            geoname_ids.add(geoname_id)
+                        elif country_code == country_iso_code.lower():
+                            geoname_ids.add(geoname_id)
+
+                with zf.open(ip_name) as ip_fd:
+                    ip_text_fd = utf8_info.streamreader(ip_fd)
+                    ip_reader = csv.reader(ip_text_fd)
+
+                    # skip header
+                    next(ip_reader)
+
+                    for ip_range, geoname_id, _, _, _, _ in ip_reader:
+                        if geoname_id in geoname_ids:
+                            ip_ranges.append(ip_range)
+
+                ip_blocks = ','.join(ip_ranges)
 
             return ip_blocks
         except urllib.error.HTTPError as err:
@@ -491,6 +555,7 @@ class GeoFilter:
         # Add the new filtering rule
         self.add_filtering_rule(addr_family)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Filter traffic in nftables using country IP blocks')
 
@@ -516,6 +581,8 @@ if __name__ == '__main__':
         help="Add the counter statement to the filtering rules")
     nft_gfilter_group.add_argument("--provider", action="store", default="ipverse.net", choices=SUPPORTED_PROVIDERS,
         help="Specify the country IP blocks provider. Default is ipverse.net")
+    nft_gfilter_group.add_argument("--maxmind-zip", action="store", type=argparse.FileType(mode='rb'),
+                                   help="If using the maxmind provider, path to the 'GeoLite2 Country: CSV Format' zip")
 
     # Table info
     table_group = parser.add_argument_group(
